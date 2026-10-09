@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f6e8c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
+<meta name="robots" content="noindex, nofollow">
+<title>Notificação de Incidentes de Segurança do Paciente</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root{
+  --primary:#0f6e8c; --primary-hover:#0a5570; --primary-soft:#e6f3f7;
+  --bg:#f4f7f9; --surface:#fff; --text:#1a2b33; --muted:#647680;
+  --border:#e2e9ee; --danger:#c0392b; --danger-bg:#fdf2f1;
+  --success:#1a7f4b; --success-bg:#eaf7ef;
+  --radius:12px; --radius-sm:8px;
+  --shadow-sm:0 1px 2px rgba(15,35,45,.04);
+  --shadow:0 8px 24px rgba(15,35,45,.06);
+  --shadow-lg:0 24px 60px rgba(15,35,45,.10);
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+  --safe-left:env(safe-area-inset-left,0px);
+  --safe-right:env(safe-area-inset-right,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:var(--bg); color:var(--text); line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+button{font-family:inherit;cursor:pointer;border:0;background:none;touch-action:manipulation}
+input,textarea,select{font-family:inherit;font-size:16px}
+[hidden]{display:none !important}
+
+.hp-field{
+  position:absolute !important;
+  left:-9999px !important; top:auto !important;
+  width:1px !important; height:1px !important;
+  overflow:hidden !important; opacity:0 !important;
+  pointer-events:none !important;
+}
+
+.login-page{
+  min-height:100vh; min-height:100dvh;
+  display:flex; align-items:center; justify-content:center;
+  padding:calc(24px + var(--safe-top)) calc(24px + var(--safe-right)) calc(24px + var(--safe-bottom)) calc(24px + var(--safe-left));
+  background:radial-gradient(circle at top,#e6f3f7 0%,var(--bg) 55%);
+}
+.login-card{
+  width:100%; max-width:420px; background:var(--surface);
+  border:1px solid var(--border); border-radius:18px;
+  padding:clamp(28px,5vw,40px) clamp(22px,5vw,34px);
+  box-shadow:var(--shadow-lg);
+}
+.logo{
+  width:56px; height:56px; border-radius:14px;
+  background:linear-gradient(135deg,var(--primary),#2a8aa5);
+  display:flex; align-items:center; justify-content:center;
+  color:#fff; font-weight:800; font-size:20px; margin-bottom:22px;
+  box-shadow:0 8px 20px rgba(15,110,140,.25);
+}
+.login-card h1{font-size:clamp(19px,5vw,22px); margin-bottom:8px}
+.login-card .subtitle{color:var(--muted); font-size:clamp(13px,3.5vw,13.5px); margin-bottom:26px}
+.field{margin-bottom:16px}
+.field label{display:block; font-size:13px; font-weight:600; margin-bottom:7px}
+.field input{
+  width:100%; padding:13px 14px; border:1px solid var(--border);
+  border-radius:var(--radius-sm); outline:none; background:#fff;
+  transition:border-color .15s, box-shadow .15s;
+  min-height:48px;
+}
+.field input:focus{border-color:var(--primary); box-shadow:0 0 0 3px rgba(15,110,140,.10)}
+.btn-primary{
+  width:100%; padding:14px 16px; border-radius:var(--radius-sm);
+  background:var(--primary); color:#fff; font-weight:600; font-size:14.5px;
+  transition:background .15s, transform .05s;
+  min-height:48px;
+}
+.btn-primary:hover{background:var(--primary-hover)}
+.btn-primary:active{transform:translateY(1px)}
+.btn-primary:disabled{opacity:.6; cursor:not-allowed}
+.alert{
+  border-radius:var(--radius-sm); padding:11px 13px; font-size:13px;
+  margin-bottom:16px; display:none;
+}
+.alert-error{background:var(--danger-bg); color:var(--danger); border:1px solid #f0c7c1}
+.alert-error.show{display:block}
+.footer-note{
+  text-align:center; color:var(--muted); font-size:11.5px; margin-top:22px;
+}
+.admin-link{text-align:center; margin-top:10px; font-size:11.5px;}
+.admin-link a{
+  color:var(--muted); text-decoration:none;
+  border-bottom:1px dotted var(--muted); padding-bottom:1px;
+  transition:color .15s, border-color .15s;
+  display:inline-block; padding:6px 4px;
+}
+.admin-link a:hover{color:var(--primary); border-bottom-color:var(--primary)}
+
+.app{padding-bottom:calc(80px + var(--safe-bottom))}
+.progress-bar{
+  position:sticky; top:0; z-index:20;
+  background:rgba(255,255,255,.94);
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+  padding-top:var(--safe-top);
+}
+.progress-inner{
+  max-width:820px; margin:0 auto;
+  padding:12px clamp(14px,4vw,20px);
+  display:flex; align-items:center; gap:clamp(8px,2.5vw,14px); font-size:12px;
+}
+.progress-label{font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; white-space:nowrap}
+.progress-track{
+  flex:1; height:6px; background:#e6ecef; border-radius:999px; overflow:hidden; min-width:40px;
+}
+.progress-fill{
+  height:100%; width:0%; border-radius:999px;
+  background:linear-gradient(90deg,var(--primary),#2a8aa5);
+  transition:width .35s ease;
+}
+.progress-count{
+  font-weight:700; color:var(--primary); font-variant-numeric:tabular-nums;
+  white-space:nowrap; min-width:44px; text-align:right;
+}
+
+.container{
+  max-width:820px; margin:0 auto;
+  padding:clamp(16px,4vw,24px) clamp(14px,4vw,20px) 40px;
+}
+
+.page-header{
+  background:linear-gradient(135deg,var(--primary),#2a8aa5);
+  color:#fff; border-radius:16px;
+  padding:clamp(20px,5vw,28px) clamp(20px,5vw,30px);
+  box-shadow:0 12px 32px rgba(15,110,140,.20); margin-bottom:16px;
+}
+.header-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:10px; flex-wrap:wrap}
+.tag{
+  display:inline-block; background:rgba(255,255,255,.18);
+  padding:5px 11px; border-radius:999px; font-size:11px; font-weight:700;
+  letter-spacing:.7px; white-space:nowrap;
+}
+.btn-ghost{
+  color:#fff; font-size:12.5px; padding:8px 14px;
+  border-radius:6px; background:rgba(255,255,255,.14);
+  transition:background .15s; min-height:36px;
+  white-space:nowrap;
+}
+.btn-ghost:hover{background:rgba(255,255,255,.26)}
+.page-header h1{
+  font-size:clamp(18px,5vw,22px); line-height:1.25;
+  margin-bottom:8px; font-weight:700;
+}
+.page-header p{font-size:clamp(12.5px,3.5vw,13.5px); color:rgba(255,255,255,.9)}
+
+.privacy-notice{
+  display:flex; gap:10px; align-items:flex-start;
+  background:#f0f7fa; border:1px solid #d3e6ee;
+  border-radius:var(--radius); padding:12px 14px;
+  font-size:clamp(12px,3.4vw,12.5px); color:#425761; margin-bottom:18px;
+  line-height:1.5;
+}
+.privacy-notice .icon{flex-shrink:0; color:var(--primary); font-size:15px; margin-top:1px;}
+.privacy-notice strong{color:var(--text)}
+
+.notice{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); margin-bottom:18px; overflow:hidden;
+  box-shadow:var(--shadow-sm);
+}
+.notice summary{
+  padding:14px 18px; cursor:pointer; font-size:13.5px; font-weight:600;
+  color:var(--primary); list-style:none; user-select:none;
+  display:flex; align-items:center; gap:8px;
+  min-height:48px;
+}
+.notice summary::-webkit-details-marker{display:none}
+.notice summary::before{content:"▸"; transition:transform .2s; font-size:12px}
+.notice[open] summary::before{transform:rotate(90deg)}
+.notice-body{padding:0 18px 18px; border-top:1px solid var(--border); padding-top:14px}
+.notice-body p{font-size:13px; color:#4a5a63; margin-bottom:9px}
+.notice-body p:last-child{margin-bottom:0}
+.notice-body strong{color:var(--text)}
+
+.form-section{margin-bottom:26px}
+.section-title{
+  font-size:12px; font-weight:700; color:var(--primary);
+  text-transform:uppercase; letter-spacing:1px; margin-bottom:12px;
+  padding-left:2px;
+}
+
+.question{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:clamp(16px,4.5vw,22px);
+  margin-bottom:12px; box-shadow:var(--shadow-sm);
+  transition:border-color .2s, box-shadow .2s;
+}
+.question:focus-within{border-color:rgba(15,110,140,.4); box-shadow:0 8px 24px rgba(15,110,140,.08)}
+.q-head{margin-bottom:14px}
+.q-num{
+  display:inline-block; font-size:10.5px; font-weight:800;
+  color:var(--primary); letter-spacing:1px; margin-bottom:5px;
+  background:var(--primary-soft); padding:3px 8px; border-radius:5px;
+}
+.q-title{
+  display:block; font-size:clamp(14.5px,4vw,15.5px);
+  font-weight:700; margin-bottom:4px; line-height:1.35;
+}
+.req{color:var(--danger); margin-left:2px}
+.q-help{font-size:clamp(11.5px,3.2vw,12.5px); color:var(--muted); margin-top:3px}
+
+.input-text, textarea{
+  width:100%; border:1px solid var(--border); border-radius:var(--radius-sm);
+  padding:13px 14px; outline:none; background:#fff; color:var(--text);
+  transition:border-color .15s, box-shadow .15s;
+  min-height:48px;
+}
+.input-text:focus, textarea:focus{
+  border-color:var(--primary); box-shadow:0 0 0 3px rgba(15,110,140,.10);
+}
+textarea{min-height:140px; resize:vertical; line-height:1.55}
+.char-count{font-size:11.5px; color:var(--muted); text-align:right; margin-top:6px}
+
+.options{display:grid; gap:8px}
+.option{
+  display:flex; align-items:flex-start; gap:11px;
+  padding:12px 14px; border:1px solid var(--border);
+  border-radius:var(--radius-sm); cursor:pointer;
+  transition:border-color .12s, background .12s;
+  font-size:clamp(13.5px,3.6vw,14px); user-select:none;
+  min-height:48px;
+}
+.option:hover{background:#f7fafb; border-color:#cfdde3}
+.option input[type=radio]{
+  accent-color:var(--primary); width:18px; height:18px;
+  margin-top:1px; flex-shrink:0; cursor:pointer;
+}
+.option:has(input:checked){
+  background:var(--primary-soft);
+  border-color:var(--primary);
+  box-shadow:0 0 0 1px var(--primary) inset;
+}
+.option span{flex:1; line-height:1.4}
+
+.outros{margin-top:8px; display:none;}
+.outros.show{display:block; animation:slideIn .18s ease}
+@keyframes slideIn{from{opacity:0; transform:translateY(-4px)} to{opacity:1; transform:translateY(0)}}
+
+.anon-toggle{
+  display:flex; align-items:flex-start; gap:11px;
+  margin-top:14px; padding:12px 14px;
+  background:#f7fafb; border:1px solid var(--border);
+  border-radius:var(--radius-sm); cursor:pointer;
+  transition:background .15s, border-color .15s;
+  min-height:48px;
+}
+.anon-toggle:hover{background:#eff5f8; border-color:#cfdde3}
+.anon-toggle:has(input:checked){background:var(--primary-soft); border-color:var(--primary);}
+.anon-toggle input{
+  margin-top:2px; accent-color:var(--primary);
+  width:18px; height:18px; flex-shrink:0; cursor:pointer;
+}
+.anon-toggle span{display:flex; flex-direction:column; gap:3px; font-size:13.5px;}
+.anon-toggle span strong{color:var(--text); font-weight:600;}
+.anon-toggle span small{color:var(--muted); font-size:11.5px; line-height:1.4;}
+
+.form-footer{
+  display:flex; justify-content:space-between; align-items:center;
+  gap:14px; margin-top:20px; padding-top:20px;
+  border-top:1px solid var(--border);
+}
+.form-footer .note{font-size:12px; color:var(--muted)}
+.btn-submit{
+  padding:14px 26px; background:var(--primary); color:#fff;
+  font-weight:600; font-size:14.5px; border-radius:var(--radius-sm);
+  transition:background .15s, transform .05s; white-space:nowrap;
+  min-height:48px;
+}
+.btn-submit:hover{background:var(--primary-hover)}
+.btn-submit:active{transform:translateY(1px)}
+.btn-submit:disabled{opacity:.55; cursor:not-allowed}
+
+.success-screen{
+  max-width:820px; margin:0 auto;
+  padding:clamp(40px,10vw,60px) clamp(16px,4vw,20px);
+  text-align:center;
+}
+.success-icon{
+  width:72px; height:72px; border-radius:50%;
+  background:var(--success-bg); color:var(--success);
+  display:flex; align-items:center; justify-content:center;
+  font-size:34px; font-weight:700; margin:0 auto 22px;
+  border:2px solid #bfe4cc;
+}
+.success-screen h2{font-size:clamp(19px,5vw,22px); margin-bottom:10px; color:var(--text)}
+.success-screen p{
+  color:var(--muted); font-size:14px; margin-bottom:24px;
+  max-width:480px; margin-left:auto; margin-right:auto;
+}
+.success-screen .btn-ghost-2{
+  padding:13px 24px; background:var(--primary); color:#fff;
+  border-radius:var(--radius-sm); font-weight:600; font-size:13.5px;
+  min-height:48px;
+}
+
+@media(max-width:900px){
+  .container{max-width:100%}
+  .progress-inner{max-width:100%}
+}
+
+@media(max-width:600px){
+  .header-top{flex-wrap:wrap}
+  .form-footer{flex-direction:column; align-items:stretch}
+  .btn-submit{width:100%}
+  .form-footer .note{text-align:center; order:-1}
+  .notice summary{font-size:13px; padding:13px 16px}
+  .notice-body{padding:0 16px 16px}
+}
+
+@media(max-width:400px){
+  .progress-inner{padding:10px 12px; gap:8px; font-size:11px}
+  .progress-label{font-size:10px; letter-spacing:.3px}
+  .progress-count{min-width:38px; font-size:11px}
+  .page-header{border-radius:12px}
+  .question{border-radius:10px}
+  .option{padding:11px 12px; gap:9px}
+  .option input[type=radio]{width:17px; height:17px}
+  .char-count{font-size:11px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  *, *::before, *::after{
+    animation-duration:.001ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.001ms !important;
+    scroll-behavior:auto !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<section class="login-page" id="loginPage">
+  <div class="login-card">
+    <div class="logo">+</div>
+    <h1>Acesso restrito</h1>
+    <p class="subtitle">Sistema de Notificação de Incidentes de Segurança do Paciente e Fragilidades de Processo</p>
+    <div class="alert alert-error" id="loginError">Usuário ou senha incorretos.</div>
+    <form id="loginForm">
+      <div class="field">
+        <label for="username">Usuário</label>
+        <input id="username" name="username" type="text" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="password">Senha</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn-primary">Entrar</button>
+    </form>
+    <p class="footer-note">Acesso restrito a colaboradores autorizados</p>
+    <p class="admin-link">
+      <a href="admin.html">Área administrativa</a>
+    </p>
+  </div>
+</section>
+
+<section class="app" id="app" hidden>
+
+  <div class="progress-bar">
+    <div class="progress-inner">
+      <span class="progress-label">Progresso</span>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <span class="progress-count" id="progressCount">0/10</span>
+    </div>
+  </div>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="header-top">
+        <span class="tag">NOTIFICAÇÃO</span>
+        <button class="btn-ghost" id="logout">Sair</button>
+      </div>
+      <h1>Notificação de Incidentes de Segurança do Paciente</h1>
+      <p>Preencha com atenção. Campos marcados com <strong>*</strong> são obrigatórios.</p>
+    </header>
+
+    <div class="privacy-notice">
+      <span class="icon">🔒</span>
+      <div>
+        <strong>Aviso de privacidade:</strong> as informações registradas neste formulário são utilizadas exclusivamente para fins de notificação e análise interna de incidentes, conforme a LGPD (Lei 13.709/2018). Acesso restrito a pessoas autorizadas.
+      </div>
+    </div>
+
+    <details class="notice">
+      <summary>📋 Consultar classificação das ocorrências</summary>
+      <div class="notice-body">
+        <p><strong>Circunstância de Risco:</strong> falhas de processo interno que não impactam em risco direto ao paciente.</p>
+        <p><strong>Evento sem dano:</strong> nenhum sintoma ou sintoma não detectado, sem necessidade de tratamento.</p>
+        <p><strong>Evento com dano leve:</strong> sintomas leves, perdas de função ou danos mínimos/moderados, de curta duração e com intervenções mínimas.</p>
+        <p><strong>Evento com dano moderado:</strong> paciente sintomático, com necessidade de intervenção, aumento do tempo de internação ou dano/perda de função permanente. <strong>Notificação obrigatória.</strong></p>
+        <p><strong>Evento com dano grave:</strong> necessidade de suporte de vida ou intervenção clínica/cirúrgica de grande porte, com grande dano ou perda de função permanente ou de longo prazo. <strong>Notificação obrigatória.</strong></p>
+        <p><strong>Evento com óbito:</strong> o evento causou ou acelerou a morte em curto prazo. <strong>Notificação obrigatória.</strong></p>
+      </div>
+    </details>
+
+    <form id="incidentForm" novalidate>
+
+      <div class="hp-field" aria-hidden="true">
+        <label for="website">Não preencha este campo</label>
+        <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+      </div>
+
+      <div class="form-section">
+        <div class="section-title">Identificação</div>
+
+        <div class="question">
+          <div class="q-head">
+            <span class="q-num">01</span>
+            <label class="q-title" for="data">Data do Incidente <span class="req">*</span></label>
+          </div>
+          <input class="input-text" type="date" id="data" name="data" required>
+        </div>
+
+        <div class="question">
+          <div class="q-head">
+            <span class="q-num">02</span>
+            <label class="q-title" for="paciente">Identificação do Paciente <span class="req">*</span></label>
+            <p class="q-help">Quando não envolver paciente, colocar (...)</p>
+          </div>
+          <input class="input-text" type="text" id="paciente" name="paciente" required>
+        </div>
+
+        <div class="question">
+          <div class="q-head">
+            <span class="q-num">03</span>
+            <label class="q-title" for="prontuario">Atendimento / Prontuário <span class="req">*</span></label>
+            <p class="q-help">Quando não envolver paciente, colocar (...)</p>
+          </div>
+          <input class="input-text" type="text" id="prontuario" name="prontuario" required>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="section-title">Setores envolvidos</div>
+
+        <div class="question">
+          <div class="q-head">
+            <span class="q-num">04</span>
+            <span class="q-title">Setor Notificante <span class="req">*</span></span>
+          </div>
+          <div class="options" role="radiogroup">
+            <label class="option"><input type="radio" name="notificante_setor" value="Tomografia" required><span>Tomografia</span></label>
+            <label class="option"><input type="radio" name="notificante_setor" value="Ressonância Magnética"><span>Ressonância Magnética</span></label>
+            <label class="option"><input type="radio" name="notificante_setor" value="Recepção / Atendimento"><span>Recepção / Atendimento</span></label>
+            <label class="option"><input type="radio" name="notificante_setor" value="Digitação"><span>Digitação</span></label>
+            <label class="option"><input type="radio" name="notificante_setor" value="Logística e Suprimentos"><span>Logística e Suprimentos</span></label>
+            <label class="option"><input type="radio" name="notificante_setor" value="Higienização"><span>Higienização</span></label>
+            <label class="option"><input type="radio" name="notificante_setor" value="Raio X"><span>Raio X</span></label>
+            <label class="option"><input type="radio" name="notificante_setor" value="Densitometria"><span>Densitometria</span></label>
+            <label class="option"><input type="radio" name="notificante_setor" value="Financeiro"><span>Financeiro</span></label>
+            <label class="option"><input type="radio" name="notificante_setor" value="Corpo Clínico"><span>Corpo Clínico</span></label>
+            <label class="option"><input type="radio" name="notificante_setor" value="Outros" data-outros="outros-notificante"><span>Outros</span></label>
+          </div>
+          <div class="outros" id="outros-notificante">
+            <input class="input-text" type="text" name="notificante_setor_outros" placeholder="Especifique o setor notificante...">
+          </div>
+        </div>
+
+        <div class="question">
+          <div class="q-head">
+            <span class="q-num">05</span>
+            <span class="q-title">Setor Notificado <span class="req">*</span></span>
+          </div>
+          <div class="options" role="radiogroup">
+            <label class="option"><input type="radio" name="notificado" value="Tomografia" required><span>Tomografia</span></label>
+            <label class="option"><input type="radio" name="notificado" value="Ressonância Magnética"><span>Ressonância Magnética</span></label>
+            <label class="option"><input type="radio" name="notificado" value="Recepção / Atendimento"><span>Recepção / Atendimento</span></label>
+            <label class="option"><input type="radio" name="notificado" value="Digitação"><span>Digitação</span></label>
+            <label class="option"><input type="radio" name="notificado" value="Logística e Suprimentos"><span>Logística e Suprimentos</span></label>
+            <label class="option"><input type="radio" name="notificado" value="Higienização"><span>Higienização</span></label>
+            <label class="option"><input type="radio" name="notificado" value="Raio X"><span>Raio X</span></label>
+            <label class="option"><input type="radio" name="notificado" value="Densitometria"><span>Densitometria</span></label>
+            <label class="option"><input type="radio" name="notificado" value="Financeiro"><span>Financeiro</span></label>
+            <label class="option"><input type="radio" name="notificado" value="Corpo Clínico"><span>Corpo Clínico</span></label>
+            <label class="option"><input type="radio" name="notificado" value="Pronto Atendimento"><span>Pronto Atendimento</span></label>
+            <label class="option"><input type="radio" name="notificado" value="UTI"><span>UTI</span></label>
+            <label class="option"><input type="radio" name="notificado" value="Unidades de Internação / Postos"><span>Unidades de Internação / Postos</span></label>
+            <label class="option"><input type="radio" name="notificado" value="Outros" data-outros="outros-notificado"><span>Outros</span></label>
+          </div>
+          <div class="outros" id="outros-notificado">
+            <input class="input-text" type="text" name="notificado_outros" placeholder="Especifique o setor notificado...">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="section-title">Classificação do incidente</div>
+
+        <div class="question">
+          <div class="q-head">
+            <span class="q-num">06</span>
+            <span class="q-title">Classificação da Ocorrência <span class="req">*</span></span>
+          </div>
+          <div class="options" role="radiogroup">
+            <label class="option"><input type="radio" name="classificacao" value="Circunstância de Risco / Falhas de processo" required><span>Circunstância de Risco / Falhas de processo</span></label>
+            <label class="option"><input type="radio" name="classificacao" value="Evento sem dano"><span>Evento sem dano</span></label>
+            <label class="option"><input type="radio" name="classificacao" value="Evento com dano leve"><span>Evento com dano leve</span></label>
+            <label class="option"><input type="radio" name="classificacao" value="Evento com dano moderado"><span>Evento com dano moderado</span></label>
+            <label class="option"><input type="radio" name="classificacao" value="Evento com dano grave"><span>Evento com dano grave</span></label>
+            <label class="option"><input type="radio" name="classificacao" value="Evento com óbito"><span>Evento com óbito</span></label>
+            <label class="option"><input type="radio" name="classificacao" value="Evento sentinela"><span>Evento sentinela</span></label>
+          </div>
+        </div>
+
+        <div class="question">
+          <div class="q-head">
+            <span class="q-num">07</span>
+            <span class="q-title">Tipo de Incidente <span class="req">*</span></span>
+          </div>
+          <div class="options" role="radiogroup">
+            <label class="option"><input type="radio" name="tipo" value="Extravasamento de Contraste" required><span>Extravasamento de Contraste</span></label>
+            <label class="option"><input type="radio" name="tipo" value="Retificação de Laudo"><span>Retificação de Laudo</span></label>
+            <label class="option"><input type="radio" name="tipo" value="Reação Alérgica ao Contraste"><span>Reação Alérgica ao Contraste</span></label>
+            <label class="option"><input type="radio" name="tipo" value="Descarte de resíduo inadequado"><span>Descarte de resíduo inadequado</span></label>
+            <label class="option"><input type="radio" name="tipo" value="Atraso na realização de exames ou procedimentos"><span>Atraso na realização de exames ou procedimentos</span></label>
+            <label class="option"><input type="radio" name="tipo" value="Desabastecimento ou falta de insumo"><span>Desabastecimento ou falta de insumo</span></label>
+            <label class="option"><input type="radio" name="tipo" value="Queda"><span>Queda</span></label>
+            <label class="option"><input type="radio" name="tipo" value="Falha na Identificação de Paciente"><span>Falha na Identificação de Paciente</span></label>
+            <label class="option"><input type="radio" name="tipo" value="Falha no agendamento de exames"><span>Falha no agendamento de exames</span></label>
+            <label class="option"><input type="radio" name="tipo" value="Falha na administração de medicamentos"><span>Falha na administração de medicamentos</span></label>
+            <label class="option"><input type="radio" name="tipo" value="Quebra / defeito de equipamento"><span>Quebra / defeito de equipamento</span></label>
+            <label class="option"><input type="radio" name="tipo" value="Falha na digitação de laudos"><span>Falha na digitação de laudos</span></label>
+            <label class="option"><input type="radio" name="tipo" value="Atraso na entrega de laudos"><span>Atraso na entrega de laudos</span></label>
+            <label class="option"><input type="radio" name="tipo" value="Indisponibilidade de sistemas (PACS, PRORADIS...)"><span>Indisponibilidade de sistemas (PACS, PRORADIS...)</span></label>
+            <label class="option"><input type="radio" name="tipo" value="Falha de Comunicação"><span>Falha de Comunicação</span></label>
+            <label class="option"><input type="radio" name="tipo" value="Descarte de Resíduos"><span>Descarte de Resíduos</span></label>
+            <label class="option"><input type="radio" name="tipo" value="Outros" data-outros="outros-tipo"><span>Outros</span></label>
+          </div>
+          <div class="outros" id="outros-tipo">
+            <input class="input-text" type="text" name="tipo_outros" placeholder="Especifique o tipo de incidente...">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="section-title">Detalhes e ações</div>
+
+        <div class="question">
+          <div class="q-head">
+            <span class="q-num">08</span>
+            <label class="q-title" for="descricao">Descrição da Ocorrência <span class="req">*</span></label>
+          </div>
+          <textarea id="descricao" name="descricao" required
+            placeholder="Descreva o ocorrido com o máximo de detalhes: o que aconteceu, quando, onde, quem estava envolvido, como foi identificado..."></textarea>
+          <div class="char-count" id="charCount">0 caracteres</div>
+        </div>
+
+        <div class="question">
+          <div class="q-head">
+            <span class="q-num">09</span>
+            <span class="q-title">O que foi feito após a identificação da ocorrência? <span class="req">*</span></span>
+          </div>
+          <div class="options" role="radiogroup">
+            <label class="option"><input type="radio" name="acao" value="Realizado ação que ELIMINA a não conformidade" required><span>Realizado ação que <strong>ELIMINA</strong> a não conformidade</span></label>
+            <label class="option"><input type="radio" name="acao" value="Realizado orientação e suporte ao paciente"><span>Realizado orientação e suporte ao paciente</span></label>
+            <label class="option"><input type="radio" name="acao" value="Comunicado chefia imediata"><span>Comunicado chefia imediata</span></label>
+            <label class="option"><input type="radio" name="acao" value="Aceito não conformidade para solução posterior"><span>Aceito não conformidade para solução posterior</span></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="section-title">Notificante</div>
+
+        <div class="question">
+          <div class="q-head">
+            <span class="q-num">10</span>
+            <label class="q-title" for="notificante">Identificação do Notificante <span class="req">*</span></label>
+            <p class="q-help">Nome completo e função/cargo</p>
+          </div>
+          <input class="input-text" type="text" id="notificante" name="notificante" required>
+
+          <label class="anon-toggle" for="anonima">
+            <input type="checkbox" id="anonima" name="anonima">
+            <span>
+              <strong>Notificar anonimamente</strong>
+              <small>O nome do notificante não será exibido no painel administrativo. Use para casos sensíveis.</small>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-footer">
+        <span class="note">* Campos obrigatórios</span>
+        <button type="submit" class="btn-submit" id="submitBtn">Enviar notificação</button>
+      </div>
+    </form>
+  </main>
+</section>
+
+<section class="success-screen" id="successScreen" hidden>
+  <div class="success-icon">✓</div>
+  <h2>Notificação registrada</h2>
+  <p id="successMsg">Sua notificação foi registrada com sucesso no sistema.</p>
+  <button class="btn-ghost-2" id="newNotification">Nova notificação</button>
+</section>
+
+<script>
+(function(){
+  'use strict';
+
+  const SUPABASE_URL = 'https://fnuhhkopbosfxwwlxvxe.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_P9l9b0oZYQDjtwf5ALXq9g_O9_hR0TP';
+
+  const _k = 0x2A;
+  const _u = [90,88,67,71,79];
+  const _p = [90,88,67,71,79,67,71,75,77,79,68,89];
+  function _r(arr){
+    let s = '';
+    for(let i = 0; i < arr.length; i++) s += String.fromCharCode(arr[i] ^ _k);
+    return s;
+  }
+
+  const PAGE_LOAD_TS = Date.now();
+  const MIN_FILL_TIME_MS = 2000;
+
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const loginPage = document.getElementById('loginPage');
+  const app = document.getElementById('app');
+  const successScreen = document.getElementById('successScreen');
+  const loginError = document.getElementById('loginError');
+  const form = document.getElementById('incidentForm');
+  const progressFill = document.getElementById('progressFill');
+  const progressCount = document.getElementById('progressCount');
+  const descricao = document.getElementById('descricao');
+  const charCount = document.getElementById('charCount');
+
+  function showApp(){
+    loginPage.hidden = true;
+    app.hidden = false;
+    successScreen.hidden = true;
+    updateProgress();
+  }
+  function showLogin(){
+    loginPage.hidden = false;
+    app.hidden = true;
+    successScreen.hidden = true;
+    document.getElementById('loginForm').reset();
+    loginError.classList.remove('show');
+  }
+  function showSuccess(){
+    app.hidden = true;
+    successScreen.hidden = false;
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  document.getElementById('loginForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    const u = document.getElementById('username').value.trim();
+    const p = document.getElementById('password').value;
+    if(u === _r(_u) && p === _r(_p)){
+      sessionStorage.setItem('pi_logged', '1');
+      showApp();
+    } else {
+      loginError.classList.add('show');
+      document.getElementById('password').value = '';
+      document.getElementById('password').focus();
+    }
+  });
+
+  document.getElementById('logout').addEventListener('click', function(){
+    sessionStorage.removeItem('pi_logged');
+    showLogin();
+  });
+
+  if(sessionStorage.getItem('pi_logged') === '1') showApp();
+
+  document.querySelectorAll('input[type=radio][data-outros]').forEach(function(radio){
+    radio.addEventListener('change', function(){
+      const alvo = document.getElementById(radio.dataset.outros);
+      if(alvo){
+        alvo.classList.add('show');
+        const input = alvo.querySelector('input');
+        if(input) setTimeout(function(){ input.focus(); }, 60);
+      }
+    });
+  });
+
+  document.querySelectorAll('input[type=radio]').forEach(function(radio){
+    radio.addEventListener('change', function(){
+      const grupo = radio.name;
+      document.querySelectorAll('input[name="' + grupo + '"]').forEach(function(r){
+        if(r.dataset.outros && !r.checked){
+          const alvo = document.getElementById(r.dataset.outros);
+          if(alvo){
+            alvo.classList.remove('show');
+            const input = alvo.querySelector('input');
+            if(input) input.value = '';
+          }
+        }
+      });
+    });
+  });
+
+  descricao.addEventListener('input', function(){
+    charCount.textContent = descricao.value.length + ' caracteres';
+  });
+
+  function isAnswered(el){
+    if(el.type === 'radio') return !!form.querySelector('input[name="' + el.name + '"]:checked');
+    return el.value && el.value.trim() !== '';
+  }
+
+  function updateProgress(){
+    const required = ['data','paciente','prontuario','notificante_setor','notificado','classificacao','tipo','descricao','acao','notificante'];
+    let respondidas = 0;
+    required.forEach(function(name){
+      const el = form.querySelector('[name="' + name + '"]');
+      if(el && isAnswered(el)) respondidas++;
+    });
+    const pct = (respondidas / required.length) * 100;
+    progressFill.style.width = pct + '%';
+    progressCount.textContent = respondidas + '/' + required.length;
+  }
+
+  form.addEventListener('input', updateProgress);
+  form.addEventListener('change', updateProgress);
+
+  function marcarErro(el){
+    el.style.borderColor = 'var(--danger)';
+    el.style.boxShadow = '0 0 0 3px rgba(192,57,43,.12)';
+    setTimeout(function(){
+      el.style.borderColor = '';
+      el.style.boxShadow = '';
+    }, 2600);
+  }
+
+  async function garantirSessaoAnonima(){
+    const { data: { session } } = await supabase.auth.getSession();
+    if(session) return true;
+    const { error } = await supabase.auth.signInAnonymously();
+    if(error){
+      console.error('Erro ao criar sessão anônima:', error);
+      return false;
+    }
+    return true;
+  }
+
+  form.addEventListener('submit', async function(e){
+    e.preventDefault();
+
+    const hp = document.getElementById('website');
+    if(hp && hp.value.trim() !== ''){
+      console.warn('Honeypot ativado — envio bloqueado.');
+      showSuccess();
+      return;
+    }
+
+    if(Date.now() - PAGE_LOAD_TS < MIN_FILL_TIME_MS){
+      console.warn('Envio rápido demais — possivelmente bot.');
+      showSuccess();
+      return;
+    }
+
+    const invalido = form.querySelector(':invalid');
+    if(invalido){
+      invalido.focus({preventScroll:true});
+      invalido.scrollIntoView({behavior:'smooth', block:'center'});
+      if(invalido.type !== 'radio') marcarErro(invalido);
+      const question = invalido.closest('.question');
+      if(question){
+        question.style.transition = 'transform .25s';
+        question.style.transform = 'translateX(-4px)';
+        setTimeout(function(){ question.style.transform = ''; }, 200);
+      }
+      return;
+    }
+
+    const outrosVisiveis = form.querySelectorAll('.outros.show input');
+    for(const inp of outrosVisiveis){
+      if(!inp.value.trim()){
+        inp.focus();
+        inp.scrollIntoView({behavior:'smooth', block:'center'});
+        marcarErro(inp);
+        return;
+      }
+    }
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+
+    try {
+      const ok = await garantirSessaoAnonima();
+      if(!ok) throw new Error('Não foi possível iniciar a sessão segura.');
+
+      const fd = new FormData(form);
+      const dados = {
+        data_incidente: fd.get('data'),
+        setor_notificante: fd.get('notificante_setor'),
+        setor_notificante_outros: fd.get('notificante_setor_outros') || null,
+        setor_notificado: fd.get('notificado'),
+        setor_notificado_outros: fd.get('notificado_outros') || null,
+        classificacao: fd.get('classificacao'),
+        tipo_incidente: fd.get('tipo'),
+        tipo_incidente_outros: fd.get('tipo_outros') || null,
+        descricao: fd.get('descricao'),
+        acao_realizada: fd.get('acao'),
+        paciente: fd.get('paciente'),
+        prontuario: fd.get('prontuario'),
+        notificante: fd.get('notificante'),
+        anonima: fd.get('anonima') === 'on'
+      };
+
+      const { error } = await supabase.from('incidents').insert([dados]);
+      if(error) throw error;
+
+      sessionStorage.setItem('pi_ultima_notificacao', new Date().toISOString());
+      showSuccess();
+
+    } catch(err) {
+      console.error('Erro ao enviar notificação:', err);
+      alert(
+        'Não foi possível enviar a notificação.\n\n' +
+        'Detalhes: ' + (err.message || 'erro desconhecido') + '\n\n' +
+        'Verifique sua conexão e tente novamente.'
+      );
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Enviar notificação';
+    }
+  });
+
+  document.getElementById('newNotification').addEventListener('click', function(){
+    form.reset();
+    document.querySelectorAll('.outros.show').forEach(function(el){
+      el.classList.remove('show');
+    });
+    charCount.textContent = '0 caracteres';
+    updateProgress();
+    showApp();
+    window.scrollTo({top:0, behavior:'smooth'});
+  });
+
+})();
+</script>
+</body>
+</html>

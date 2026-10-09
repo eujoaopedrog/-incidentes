@@ -1,0 +1,1970 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f6e8c">
+<meta name="robots" content="noindex, nofollow">
+<title>Painel NSP | Notificações</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+
+<style>
+:root{
+  --primary:#0f6e8c; --primary-hover:#0a5570; --primary-soft:#e6f3f7;
+  --bg:#f4f7f9; --surface:#fff; --text:#1a2b33; --muted:#647680;
+  --border:#e2e9ee; --danger:#c0392b; --danger-bg:#fdf2f1; --danger-hover:#a03024;
+  --warning:#b8860b; --warning-bg:#fff8e1;
+  --success:#1a7f4b; --success-bg:#eaf7ef;
+  --info:#2a6fa8; --info-bg:#eaf2f9;
+  --purple:#7c3aed; --purple-bg:#f3e8ff;
+  --radius:12px; --radius-sm:8px;
+  --shadow-sm:0 1px 2px rgba(15,35,45,.04);
+  --shadow:0 8px 24px rgba(15,35,45,.06);
+  --shadow-lg:0 24px 60px rgba(15,35,45,.10);
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+  --safe-left:env(safe-area-inset-left,0px);
+  --safe-right:env(safe-area-inset-right,0px);
+  --topbar-h:63px;
+  --tabs-h:52px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:var(--bg); color:var(--text); line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+button{font-family:inherit;cursor:pointer;border:0;background:none;touch-action:manipulation}
+input,select,textarea{font-family:inherit;font-size:16px}
+[hidden]{display:none !important}
+
+/* ===== LOGIN ===== */
+.login-page{
+  min-height:100vh; min-height:100dvh;
+  display:flex; align-items:center; justify-content:center;
+  padding:calc(24px + var(--safe-top)) calc(24px + var(--safe-right)) calc(24px + var(--safe-bottom)) calc(24px + var(--safe-left));
+  background:radial-gradient(circle at top,#e6f3f7 0%,var(--bg) 55%);
+}
+.login-card{
+  width:100%; max-width:420px; background:var(--surface);
+  border:1px solid var(--border); border-radius:18px;
+  padding:clamp(28px,5vw,40px) clamp(22px,5vw,34px);
+  box-shadow:var(--shadow-lg);
+}
+.logo{
+  width:56px; height:56px; border-radius:14px;
+  background:linear-gradient(135deg,var(--primary),#2a8aa5);
+  display:flex; align-items:center; justify-content:center;
+  color:#fff; font-weight:800; font-size:20px; margin-bottom:22px;
+  box-shadow:0 8px 20px rgba(15,110,140,.25);
+}
+.login-card h1{font-size:clamp(19px,5vw,22px); margin-bottom:8px}
+.login-card .subtitle{color:var(--muted); font-size:clamp(13px,3.5vw,13.5px); margin-bottom:26px}
+.field{margin-bottom:16px}
+.field label{display:block; font-size:13px; font-weight:600; margin-bottom:7px}
+.field input{
+  width:100%; padding:13px 14px; border:1px solid var(--border);
+  border-radius:var(--radius-sm); outline:none; background:#fff;
+  transition:border-color .15s, box-shadow .15s;
+  min-height:48px;
+}
+.field input:focus{border-color:var(--primary); box-shadow:0 0 0 3px rgba(15,110,140,.10)}
+.btn-primary{
+  width:100%; padding:14px 16px; border-radius:var(--radius-sm);
+  background:var(--primary); color:#fff; font-weight:600; font-size:14.5px;
+  transition:background .15s; min-height:48px;
+}
+.btn-primary:hover{background:var(--primary-hover)}
+.btn-primary:disabled{opacity:.6; cursor:not-allowed}
+.alert{
+  border-radius:var(--radius-sm); padding:11px 13px; font-size:13px;
+  margin-bottom:16px; display:none;
+}
+.alert-error{background:var(--danger-bg); color:var(--danger); border:1px solid #f0c7c1}
+.alert-error.show{display:block}
+.alert-warning{background:var(--warning-bg); color:var(--warning); border:1px solid #f0d99a}
+.alert-warning.show{display:block}
+.footer-note{text-align:center; color:var(--muted); font-size:11.5px; margin-top:22px;}
+.security-hint{text-align:center; margin-top:10px; font-size:11px; color:var(--muted);}
+
+/* ===== TOPBAR ===== */
+.topbar{
+  background:linear-gradient(135deg,var(--primary),#2a8aa5);
+  color:#fff;
+  padding:calc(14px + var(--safe-top)) calc(24px + var(--safe-right)) 14px calc(24px + var(--safe-left));
+  display:flex; align-items:center; justify-content:space-between;
+  gap:16px; box-shadow:0 4px 20px rgba(15,110,140,.18);
+  position:sticky; top:0; z-index:20;
+}
+.topbar-left{display:flex; align-items:center; gap:12px; min-width:0; flex:1}
+.topbar .logo{width:36px; height:36px; border-radius:9px; font-size:14px; margin:0; box-shadow:none; flex-shrink:0}
+.topbar h1{font-size:clamp(13px,3.5vw,15px); font-weight:700; letter-spacing:.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.topbar .subtitle{font-size:11px; color:rgba(255,255,255,.8); font-weight:400; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.topbar-right{display:flex; align-items:center; gap:12px; flex-shrink:0}
+.user-email{font-size:12px; color:rgba(255,255,255,.9); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px}
+.btn-logout{color:#fff; font-size:12px; padding:8px 13px; border-radius:6px; background:rgba(255,255,255,.14); transition:background .15s; min-height:36px; white-space:nowrap}
+.btn-logout:hover{background:rgba(255,255,255,.26)}
+
+/* ===== INSTITUTIONAL ===== */
+.inst-header{background:var(--surface); border-bottom:1px solid var(--border); padding:20px calc(24px + var(--safe-right)) 20px calc(24px + var(--safe-left));}
+.inst-header-inner{max-width:1700px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; gap:24px; flex-wrap:wrap;}
+.inst-left{min-width:0}
+.inst-left .company-name{font-size:clamp(14px,3.5vw,16px); font-weight:800; color:var(--text); letter-spacing:.2px; display:flex; align-items:center; gap:8px;}
+.inst-left .company-name::before{content:""; width:8px; height:8px; border-radius:2px; background:var(--primary); display:inline-block; flex-shrink:0}
+.inst-left .report-title{font-size:clamp(11.5px,3vw,12.5px); color:var(--muted); margin-top:5px;}
+.inst-right{display:flex; gap:clamp(14px,3vw,26px); align-items:center; flex-wrap:wrap;}
+.inst-meta-item{font-size:12px; color:var(--muted);}
+.inst-meta-item .label{display:block; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; font-weight:700; margin-bottom:3px;}
+.inst-meta-item .value{font-size:13px; color:var(--text); font-weight:600}
+.inst-meta-item .value em{color:var(--primary); font-style:normal; font-weight:800; font-size:14px}
+
+/* ===== TABS ===== */
+.tabs-nav{
+  background:var(--surface); border-bottom:1px solid var(--border);
+  padding:0 calc(24px + var(--safe-right)) 0 calc(24px + var(--safe-left));
+  position:sticky; top:var(--topbar-h); z-index:19;
+  overflow-x:auto;
+  scrollbar-width:none; -ms-overflow-style:none;
+  -webkit-overflow-scrolling:touch;
+}
+.tabs-nav::-webkit-scrollbar{display:none}
+.tabs-nav-inner{max-width:1700px; margin:0 auto; display:flex; gap:2px; min-width:max-content}
+.tab-btn{
+  padding:14px 16px; font-size:13px; font-weight:600;
+  color:var(--muted); border-bottom:2px solid transparent;
+  transition:color .15s, border-color .15s; white-space:nowrap;
+  display:flex; align-items:center; gap:7px;
+  min-height:48px;
+}
+.tab-btn:hover{color:var(--primary)}
+.tab-btn.active{color:var(--primary); border-bottom-color:var(--primary)}
+.tab-btn .icon{font-size:14px}
+
+.dash-container{
+  max-width:1700px; margin:0 auto;
+  padding:20px calc(24px + var(--safe-right)) calc(60px + var(--safe-bottom)) calc(24px + var(--safe-left));
+}
+
+/* ===== KPIs ===== */
+.kpi-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:20px;}
+.kpi-card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; box-shadow:var(--shadow-sm); transition:transform .15s, box-shadow .15s;}
+.kpi-card:hover{transform:translateY(-1px); box-shadow:var(--shadow)}
+.kpi-card .kpi-top{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; gap:8px}
+.kpi-card .kpi-label{font-size:11px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.5px; line-height:1.3;}
+.kpi-card .kpi-icon{width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:14px; background:var(--primary-soft); color:var(--primary); flex-shrink:0;}
+.kpi-card.danger .kpi-icon{background:var(--danger-bg); color:var(--danger)}
+.kpi-card.success .kpi-icon{background:var(--success-bg); color:var(--success)}
+.kpi-card.warning .kpi-icon{background:var(--warning-bg); color:var(--warning)}
+.kpi-card.info .kpi-icon{background:var(--info-bg); color:var(--info)}
+.kpi-card.purple .kpi-icon{background:var(--purple-bg); color:var(--purple)}
+.kpi-card .kpi-value{font-size:clamp(22px,5vw,26px); font-weight:800; line-height:1; font-variant-numeric:tabular-nums; color:var(--text);}
+.kpi-card.danger .kpi-value{color:var(--danger)}
+.kpi-card.success .kpi-value{color:var(--success)}
+.kpi-card.warning .kpi-value{color:var(--warning)}
+.kpi-card.info .kpi-value{color:var(--info)}
+.kpi-card.purple .kpi-value{color:var(--purple)}
+.kpi-card .kpi-sub{font-size:11.5px; color:var(--muted); margin-top:8px; display:flex; align-items:center; gap:6px; flex-wrap:wrap}
+
+/* ===== CHARTS ===== */
+.charts-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:14px; margin-bottom:20px;}
+.chart-card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; box-shadow:var(--shadow-sm); min-width:0}
+.chart-card h3{font-size:12px; font-weight:700; color:var(--text); text-transform:uppercase; letter-spacing:.5px; margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:6px;}
+.chart-wrapper{position:relative; height:230px;}
+.chart-wrapper.tall{height:290px;}
+.chart-wrapper.short{height:180px;}
+
+/* ===== FILTERS ===== */
+.filter-bar{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; box-shadow:var(--shadow-sm); margin-bottom:16px;}
+.filter-bar-title{font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:12px; display:flex; align-items:center; gap:6px;}
+.filter-row{display:grid; grid-template-columns:2fr 1fr 1fr 1fr 1fr; gap:10px; margin-bottom:10px;}
+.filter-row.r2{grid-template-columns:1fr 1fr 1fr 1fr 1fr;}
+.filter-row.r3{grid-template-columns:1fr 1fr 1fr 1fr 1fr;}
+.filter-field{min-width:0}
+.filter-field label{display:block; font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin-bottom:5px;}
+.filter-field input, .filter-field select{width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:var(--radius-sm); outline:none; background:#fff; font-size:14px; transition:border-color .15s, box-shadow .15s; min-height:40px;}
+.filter-field input:focus, .filter-field select:focus{border-color:var(--primary); box-shadow:0 0 0 3px rgba(15,110,140,.10);}
+.filter-actions{display:flex; justify-content:space-between; align-items:center; gap:12px; padding-top:12px; margin-top:12px; border-top:1px solid var(--border); flex-wrap:wrap}
+.results-count{font-size:12.5px; color:var(--muted);}
+.results-count strong{color:var(--text)}
+.filter-actions .buttons{display:flex; gap:8px; flex-wrap:wrap}
+.btn{padding:9px 15px; border-radius:var(--radius-sm); font-size:12.5px; font-weight:600; transition:background .15s; white-space:nowrap; display:inline-flex; align-items:center; gap:6px; min-height:40px;}
+.btn-primary-2{background:var(--primary); color:#fff}
+.btn-primary-2:hover{background:var(--primary-hover)}
+.btn-outline{background:#fff; color:var(--text); border:1px solid var(--border)}
+.btn-outline:hover{background:#f7fafb}
+.btn-success{background:var(--success); color:#fff}
+.btn-success:hover{background:#146739}
+.btn-danger{background:var(--danger); color:#fff}
+.btn-danger:hover{background:var(--danger-hover)}
+.btn-warning{background:var(--warning); color:#fff}
+.btn-warning:hover{background:#966d09}
+.btn-sm{padding:6px 11px; font-size:12px}
+.btn:disabled{opacity:.5; cursor:not-allowed}
+
+/* ===== TABLE ===== */
+.table-wrap{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow-sm); overflow:hidden;}
+.table-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+table{width:100%; border-collapse:collapse; font-size:12.5px; min-width:1400px}
+thead th{background:#f7fafb; text-align:left; font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; padding:10px 12px; border-bottom:1px solid var(--border); white-space:nowrap; position:sticky; top:0; z-index:2;}
+thead th.sortable{cursor:pointer; user-select:none}
+thead th.sortable:hover{background:#eef3f6; color:var(--primary)}
+thead th .sort-icon{display:inline-block; margin-left:4px; opacity:.35; font-size:9px; transition:opacity .15s;}
+thead th.sorted .sort-icon{opacity:1; color:var(--primary)}
+tbody td{padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:#fafcfd}
+tbody tr.cancelled{opacity:.55; background:#fbf8f8}
+tbody tr.cancelled .cell-num{text-decoration:line-through}
+.cell-num{font-weight:700; color:var(--primary); font-variant-numeric:tabular-nums; white-space:nowrap; font-size:12px;}
+.cell-date{color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap; font-size:12px}
+.cell-truncate{max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.cell-truncate.med{max-width:260px}
+.cell-truncate.long{max-width:320px}
+.cell-timestamp{color:var(--muted); font-size:11px; white-space:nowrap}
+.cell-muted{color:var(--muted); font-size:11.5px}
+
+.badge{display:inline-block; padding:3px 8px; border-radius:6px; font-size:10.5px; font-weight:700; letter-spacing:.2px; white-space:nowrap;}
+.badge-risco{background:#eef1f4; color:#526571}
+.badge-sem-dano{background:var(--info-bg); color:var(--info)}
+.badge-leve{background:var(--warning-bg); color:var(--warning)}
+.badge-moderado{background:#fde9d9; color:#b85516}
+.badge-grave{background:var(--danger-bg); color:var(--danger)}
+.badge-obito{background:#5a1a1a; color:#fff}
+.badge-sentinela{background:var(--purple-bg); color:var(--purple)}
+
+.status-badge{display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; font-size:10.5px; font-weight:700; letter-spacing:.2px; white-space:nowrap;}
+.status-badge::before{content:""; width:6px; height:6px; border-radius:50%; background:currentColor;}
+.status-andamento{background:#eaf2f9; color:#2a6fa8}
+.status-analise{background:var(--warning-bg); color:var(--warning)}
+.status-concluido{background:var(--success-bg); color:var(--success)}
+.status-arquivado{background:#eef1f4; color:#526571}
+.status-cancelado{background:var(--danger-bg); color:var(--danger)}
+
+.wf-badge{display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; font-size:10px; font-weight:700; letter-spacing:.2px; white-space:nowrap; text-transform:uppercase;}
+.wf-notificada{background:#eef1f4; color:#526571}
+.wf-triagem{background:var(--info-bg); color:var(--info)}
+.wf-investigacao{background:var(--warning-bg); color:var(--warning)}
+.wf-acao{background:#fde9d9; color:#b85516}
+.wf-verificacao{background:var(--purple-bg); color:var(--purple)}
+.wf-encerrada{background:var(--success-bg); color:var(--success)}
+
+.btn-ver{padding:6px 11px; font-size:12px; font-weight:600; border-radius:6px; background:var(--primary-soft); color:var(--primary); transition:background .15s; white-space:nowrap; min-height:32px;}
+.btn-ver:hover{background:#d0e5ec}
+
+.tfoot-row td{background:#f7fafb; font-weight:700; font-size:11.5px; color:var(--text); border-top:2px solid var(--border); padding:12px; white-space:nowrap;}
+
+.empty-state{padding:60px 20px; text-align:center; color:var(--muted);}
+.empty-state .icon{font-size:42px; margin-bottom:12px; opacity:.4}
+.empty-state h3{font-size:15px; margin-bottom:6px; color:var(--text)}
+.empty-state p{font-size:13px}
+
+/* ===== PAGINATION ===== */
+.pagination{display:flex; justify-content:space-between; align-items:center; gap:16px; padding:14px 18px; border-top:1px solid var(--border); background:#fafcfd; flex-wrap:wrap;}
+.pagination-info{font-size:12px; color:var(--muted)}
+.pagination-info strong{color:var(--text)}
+.pagination-controls{display:flex; gap:6px; align-items:center; flex-wrap:wrap}
+.pagination-controls select{padding:7px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px; background:#fff; min-height:36px;}
+.page-btn{min-width:34px; height:34px; padding:0 9px; border-radius:6px; border:1px solid var(--border); background:#fff; font-size:12px; font-weight:600; color:var(--text); transition:background .15s, border-color .15s; display:inline-flex; align-items:center; justify-content:center;}
+.page-btn:hover:not(:disabled){background:var(--primary-soft); border-color:var(--primary); color:var(--primary)}
+.page-btn:disabled{opacity:.4; cursor:not-allowed}
+.page-btn.active{background:var(--primary); color:#fff; border-color:var(--primary)}
+
+/* ===== KANBAN ===== */
+.kanban-board{display:grid; grid-template-columns:repeat(6,minmax(260px,1fr)); gap:12px; overflow-x:auto; padding-bottom:14px; -webkit-overflow-scrolling:touch;}
+.kanban-col{background:#f7fafb; border:1px solid var(--border); border-radius:var(--radius); padding:12px; min-height:340px; display:flex; flex-direction:column;}
+.kanban-col-head{display:flex; justify-content:space-between; align-items:center; padding-bottom:10px; margin-bottom:10px; border-bottom:2px solid var(--border); gap:8px;}
+.kanban-col-head .title{font-size:11.5px; font-weight:800; text-transform:uppercase; letter-spacing:.6px; color:var(--text); display:flex; align-items:center; gap:6px;}
+.kanban-col-head .count{font-size:11px; font-weight:700; background:#fff; color:var(--muted); padding:2px 8px; border-radius:999px; border:1px solid var(--border); flex-shrink:0}
+.kanban-col.notificada .kanban-col-head{border-bottom-color:#8899a3}
+.kanban-col.triagem .kanban-col-head{border-bottom-color:var(--info)}
+.kanban-col.investigacao .kanban-col-head{border-bottom-color:var(--warning)}
+.kanban-col.acao .kanban-col-head{border-bottom-color:#b85516}
+.kanban-col.verificacao .kanban-col-head{border-bottom-color:var(--purple)}
+.kanban-col.encerrada .kanban-col-head{border-bottom-color:var(--success)}
+.kanban-cards{display:flex; flex-direction:column; gap:8px; flex:1; overflow-y:auto; max-height:600px;}
+.kanban-card{background:#fff; border:1px solid var(--border); border-radius:var(--radius-sm); padding:11px 12px; cursor:pointer; transition:box-shadow .15s, transform .15s; box-shadow:var(--shadow-sm);}
+.kanban-card:hover{box-shadow:var(--shadow); transform:translateY(-1px)}
+.kanban-card .kc-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:6px; flex-wrap:wrap}
+.kanban-card .kc-num{font-size:10.5px; font-weight:800; color:var(--primary); letter-spacing:.3px;}
+.kanban-card .kc-date{font-size:10.5px; color:var(--muted);}
+.kanban-card .kc-title{font-size:12.5px; font-weight:600; color:var(--text); margin-bottom:6px; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+.kanban-card .kc-foot{display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:6px; flex-wrap:wrap}
+.kanban-card .kc-setor{font-size:10.5px; color:var(--muted); font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.kanban-card.priority-high{border-left:3px solid var(--danger);}
+.kanban-card.priority-med{border-left:3px solid var(--warning);}
+
+/* ===== MODAL ===== */
+.modal-backdrop{position:fixed; inset:0; background:rgba(15,35,45,.55); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); display:flex; align-items:flex-start; justify-content:center; padding:calc(40px + var(--safe-top)) 20px calc(40px + var(--safe-bottom)); z-index:100; overflow-y:auto; -webkit-overflow-scrolling:touch;}
+.modal{background:var(--surface); border-radius:16px; max-width:760px; width:100%; box-shadow:var(--shadow-lg); overflow:hidden; margin:auto;}
+.modal.wide{max-width:900px;}
+.modal-header{padding:20px 24px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:flex-start; gap:16px;}
+.modal-header h2{font-size:clamp(15px,4vw,17px); font-weight:700; margin-bottom:4px}
+.modal-header .sub{font-size:12px; color:var(--muted)}
+.modal-close{width:36px; height:36px; border-radius:8px; color:var(--muted); display:flex; align-items:center; justify-content:center; font-size:18px; transition:background .15s, color .15s; flex-shrink:0}
+.modal-close:hover{background:#f0f4f6; color:var(--text)}
+.modal-body{padding:clamp(18px,4vw,24px); max-height:calc(100vh - 200px); overflow-y:auto; -webkit-overflow-scrolling:touch;}
+.detail-section{margin-bottom:22px}
+.detail-section:last-child{margin-bottom:0}
+.detail-section h3{font-size:11px; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:.7px; margin-bottom:12px; padding-bottom:6px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:6px; flex-wrap:wrap}
+.detail-section h3.danger-title{color:var(--danger)}
+.detail-section h3.purple-title{color:var(--purple)}
+.detail-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+.detail-item{min-width:0}
+.detail-item .label{font-size:10.5px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.4px; margin-bottom:4px;}
+.detail-item .value{font-size:13.5px; color:var(--text); word-break:break-word}
+.detail-item.full{grid-column:1 / -1}
+.detail-item .value.desc{white-space:pre-wrap; line-height:1.55; font-size:13px; background:#f7fafb; padding:12px 14px; border-radius:8px; border:1px solid var(--border);}
+
+.modal-edit{background:#f7fafb; border:1px solid var(--border); border-radius:10px; padding:16px;}
+.modal-edit label{display:block; font-size:10.5px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px;}
+.modal-edit select, .modal-edit textarea, .modal-edit input[type=text]{width:100%; padding:11px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); outline:none; background:#fff; font-size:14px; transition:border-color .15s, box-shadow .15s; font-family:inherit; min-height:44px;}
+.modal-edit select:focus, .modal-edit textarea:focus, .modal-edit input[type=text]:focus{border-color:var(--primary); box-shadow:0 0 0 3px rgba(15,110,140,.10);}
+.modal-edit textarea{min-height:80px; resize:vertical; line-height:1.5}
+.modal-edit .row{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;}
+.modal-edit .row:last-child{margin-bottom:0}
+.modal-edit .actions{display:flex; justify-content:flex-end; gap:10px; margin-top:14px; align-items:center; flex-wrap:wrap}
+.saved-msg{display:none; color:var(--success); font-size:12.5px; font-weight:700; margin-right:auto;}
+.saved-msg.show{display:block; animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0} to{opacity:1}}
+
+/* ===== DANGER ZONE ===== */
+.danger-zone{background:var(--danger-bg); border:1px solid #f0c7c1; border-radius:10px; padding:16px; margin-top:16px;}
+.danger-zone .dz-title{font-size:11px; font-weight:800; color:var(--danger); text-transform:uppercase; letter-spacing:.7px; margin-bottom:10px; display:flex; align-items:center; gap:6px;}
+.danger-zone .dz-text{font-size:12.5px; color:#7a3c34; margin-bottom:14px; line-height:1.5;}
+.danger-zone .dz-actions{display:flex; gap:10px; flex-wrap:wrap;}
+.btn-cancel-soft{background:#fff; color:var(--warning); border:1px solid #f0d99a; padding:10px 14px; border-radius:var(--radius-sm); font-size:12.5px; font-weight:600; display:inline-flex; align-items:center; gap:6px; transition:background .15s; min-height:44px;}
+.btn-cancel-soft:hover{background:var(--warning-bg)}
+.btn-delete-hard{background:var(--danger); color:#fff; padding:10px 14px; border-radius:var(--radius-sm); font-size:12.5px; font-weight:600; display:inline-flex; align-items:center; gap:6px; transition:background .15s; min-height:44px;}
+.btn-delete-hard:hover{background:var(--danger-hover)}
+
+/* ===== CONFIRM ===== */
+.confirm-backdrop{position:fixed; inset:0; background:rgba(90,20,20,.55); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; padding:calc(24px + var(--safe-top)) calc(24px + var(--safe-right)) calc(24px + var(--safe-bottom)) calc(24px + var(--safe-left)); z-index:150;}
+.confirm-modal{background:#fff; border-radius:16px; max-width:480px; width:100%; box-shadow:var(--shadow-lg); overflow:hidden;}
+.confirm-modal .modal-header{background:var(--danger); color:#fff; border-bottom:0; padding:20px 24px;}
+.confirm-modal .modal-header h2{color:#fff; font-size:clamp(15px,4vw,17px); display:flex; align-items:center; gap:8px;}
+.confirm-modal .modal-body{padding:clamp(18px,4vw,24px);}
+.confirm-modal .cb-text{font-size:14px; color:var(--text); line-height:1.6; margin-bottom:14px;}
+.confirm-modal .cb-warning{background:var(--danger-bg); border:1px solid #f0c7c1; border-radius:8px; padding:12px 14px; font-size:13px; color:#7a3c34; margin-bottom:18px; line-height:1.5;}
+.confirm-modal .cb-warning strong{color:var(--danger)}
+.confirm-modal .cb-label{display:block; font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px;}
+.confirm-modal .cb-label code{background:#f0f4f6; padding:2px 6px; border-radius:4px; color:var(--danger); font-size:12px; font-family:'Courier New', monospace; font-weight:700; letter-spacing:.5px;}
+.confirm-modal input[type=text]{width:100%; padding:13px 14px; border:2px solid var(--border); border-radius:8px; font-size:15px; outline:none; letter-spacing:.5px; font-weight:600; text-transform:uppercase; transition:border-color .15s, box-shadow .15s; min-height:48px;}
+.confirm-modal input[type=text]:focus{border-color:var(--danger); box-shadow:0 0 0 3px rgba(192,57,43,.12);}
+.confirm-modal .cb-actions{display:flex; justify-content:flex-end; gap:10px; margin-top:20px; flex-wrap:wrap}
+
+/* ===== PLANO / RCA / LIÇÕES ===== */
+.subsection{background:#f7fafb; border:1px solid var(--border); border-radius:10px; padding:16px; margin-top:10px;}
+.subsection-title{font-size:11px; font-weight:800; color:var(--text); text-transform:uppercase; letter-spacing:.7px; margin-bottom:12px; display:flex; align-items:center; gap:6px;}
+.subsection-title .accent{width:4px; height:14px; border-radius:2px; background:var(--primary);}
+
+.ishikawa-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.ishikawa-field{display:flex; flex-direction:column; gap:5px;}
+.ishikawa-field label{font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px;}
+.ishikawa-field input, .ishikawa-field textarea{width:100%; padding:9px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px; outline:none; background:#fff; resize:vertical; min-height:44px; transition:border-color .15s; font-family:inherit;}
+.ishikawa-field input:focus, .ishikawa-field textarea:focus{border-color:var(--primary); box-shadow:0 0 0 3px rgba(15,110,140,.10);}
+
+.five-why-list{display:flex; flex-direction:column; gap:8px;}
+.why-item{display:flex; gap:10px; align-items:flex-start;}
+.why-num{width:28px; height:28px; border-radius:50%; background:var(--primary); color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:8px;}
+.why-item textarea{flex:1; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; outline:none; background:#fff; resize:vertical; min-height:44px; font-family:inherit; transition:border-color .15s; min-width:0}
+.why-item textarea:focus{border-color:var(--primary); box-shadow:0 0 0 3px rgba(15,110,140,.10);}
+.causa-raiz-box{background:linear-gradient(135deg,#fff8e1,#fdf2e0); border:2px solid var(--warning); border-radius:10px; padding:12px 14px; margin-top:10px;}
+.causa-raiz-box label{display:block; font-size:10.5px; font-weight:800; color:var(--warning); text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px;}
+.causa-raiz-box textarea{width:100%; padding:10px 12px; border:1px solid #e8d5a3; border-radius:8px; font-size:13px; outline:none; background:#fff; resize:vertical; min-height:60px; font-family:inherit;}
+
+.plan-list{display:flex; flex-direction:column; gap:10px;}
+.plan-card{background:#fff; border:1px solid var(--border); border-radius:10px; padding:14px; position:relative;}
+.plan-card.done{background:var(--success-bg); border-color:#bfe4cc}
+.plan-card-head{display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:10px; flex-wrap:wrap}
+.plan-card-head .plan-title{font-size:13px; font-weight:700; color:var(--text); flex:1; min-width:0}
+.plan-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.plan-field{min-width:0}
+.plan-field label{display:block; font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin-bottom:4px;}
+.plan-field input, .plan-field select, .plan-field textarea{width:100%; padding:9px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px; outline:none; background:#fff; font-family:inherit; transition:border-color .15s; min-height:40px;}
+.plan-field input:focus, .plan-field select:focus, .plan-field textarea:focus{border-color:var(--primary); box-shadow:0 0 0 3px rgba(15,110,140,.10);}
+.plan-field.full{grid-column:1 / -1;}
+.plan-card-actions{display:flex; gap:8px; justify-content:flex-end; margin-top:10px; flex-wrap:wrap}
+
+.lesson-box{background:var(--purple-bg); border:1px solid #d8c5f5; border-radius:10px; padding:14px;}
+.lesson-box label{display:block; font-size:11px; font-weight:800; color:var(--purple); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px;}
+.lesson-box textarea{width:100%; padding:11px 12px; border:1px solid #d8c5f5; border-radius:8px; font-size:14px; outline:none; background:#fff; resize:vertical; min-height:100px; font-family:inherit; line-height:1.5;}
+
+.lesson-card{background:#fff; border:1px solid var(--border); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow-sm); margin-bottom:12px; border-left:4px solid var(--purple);}
+.lesson-card .lc-head{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; gap:12px; flex-wrap:wrap}
+.lesson-card .lc-title{font-size:14px; font-weight:800; color:var(--text); line-height:1.3;}
+.lesson-card .lc-meta{font-size:11.5px; color:var(--muted); display:flex; gap:12px; flex-wrap:wrap; margin-bottom:10px;}
+.lesson-card .lc-body{font-size:13px; color:var(--text); line-height:1.6; white-space:pre-wrap; background:#fafbfc; padding:12px 14px; border-radius:8px; margin-top:8px; border:1px solid var(--border);}
+.lesson-card .lc-desc{font-size:12.5px; color:var(--muted); line-height:1.5; margin-bottom:6px; padding-left:12px; border-left:2px solid var(--border);}
+
+/* ===== TIMELINE ===== */
+.timeline{display:flex; gap:0; margin:10px 0 18px; position:relative; overflow-x:auto; padding:6px 0; -webkit-overflow-scrolling:touch;}
+.timeline-step{flex:1; min-width:130px; text-align:center; position:relative; padding:0 4px;}
+.timeline-step::before{content:""; position:absolute; top:14px; left:50%; right:-50%; height:2px; background:var(--border);}
+.timeline-step:last-child::before{display:none}
+.timeline-step.done::before{background:var(--success)}
+.timeline-dot{width:30px; height:30px; border-radius:50%; background:#fff; border:2px solid var(--border); display:flex; align-items:center; justify-content:center; margin:0 auto 8px; position:relative; z-index:2; font-size:13px; font-weight:800; color:var(--muted); transition:all .2s;}
+.timeline-step.done .timeline-dot{background:var(--success); border-color:var(--success); color:#fff;}
+.timeline-step.current .timeline-dot{background:var(--primary); border-color:var(--primary); color:#fff; box-shadow:0 0 0 4px rgba(15,110,140,.15);}
+.timeline-step .tl-label{font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; line-height:1.3;}
+.timeline-step.done .tl-label, .timeline-step.current .tl-label{color:var(--text);}
+.timeline-step .tl-date{font-size:10px; color:var(--muted); margin-top:3px; font-variant-numeric:tabular-nums;}
+
+/* ===== LOADING ===== */
+.loading-overlay{position:fixed; inset:0; background:rgba(244,247,249,.85); backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; z-index:200; font-size:13.5px; color:var(--muted);}
+.spinner{width:24px; height:24px; border:3px solid var(--border); border-top-color:var(--primary); border-radius:50%; animation:spin .7s linear infinite; margin-right:12px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ============================================================
+   RESPONSIVIDADE — TABLET GRANDE (até 1400px)
+   ============================================================ */
+@media(max-width:1400px){
+  .charts-grid{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+}
+
+/* ============================================================
+   RESPONSIVIDADE — TABLET (até 1100px)
+   ============================================================ */
+@media(max-width:1100px){
+  .filter-row, .filter-row.r2, .filter-row.r3{grid-template-columns:1fr 1fr;}
+  .filter-row .filter-field:nth-child(1){grid-column:1 / -1;}
+  .ishikawa-grid{grid-template-columns:1fr;}
+  .plan-grid{grid-template-columns:1fr;}
+  .inst-header{padding:16px 20px}
+  .inst-header-inner{flex-direction:column; align-items:flex-start; gap:14px}
+  .inst-right{gap:20px}
+  .dash-container{padding:18px 20px 50px}
+  .tabs-nav{padding:0 20px}
+  .topbar{padding:12px 20px}
+  .user-email{max-width:140px}
+  .kanban-board{grid-template-columns:repeat(6, 260px)}
+}
+
+/* ============================================================
+   RESPONSIVIDADE — MOBILE GRANDE (até 850px)
+   ============================================================ */
+@media(max-width:850px){
+  :root{--topbar-h:57px;}
+  .topbar{padding:10px 14px}
+  .topbar .logo{width:32px; height:32px; font-size:13px}
+  .topbar .subtitle{display:none}
+  .topbar h1{font-size:13.5px}
+  .user-email{max-width:120px; font-size:11px}
+  .btn-logout{padding:7px 11px; font-size:11.5px}
+  .tabs-nav{padding:0 14px}
+  .tab-btn{padding:12px 12px; font-size:12.5px}
+  .tab-btn .icon{font-size:13px}
+  .dash-container{padding:16px 14px 40px}
+  .inst-header{padding:14px}
+  .kpi-grid{grid-template-columns:repeat(2,1fr); gap:10px}
+  .kpi-card{padding:14px 15px}
+  .kpi-card .kpi-value{font-size:22px}
+  .filter-bar{padding:14px}
+  .filter-row, .filter-row.r2, .filter-row.r3{grid-template-columns:1fr 1fr; gap:8px}
+  .filter-row .filter-field:nth-child(1){grid-column:1 / -1}
+  .filter-actions{flex-direction:column; align-items:stretch}
+  .filter-actions .buttons{width:100%}
+  .filter-actions .buttons .btn{flex:1; justify-content:center}
+  .results-count{text-align:center}
+  .charts-grid{grid-template-columns:1fr; gap:12px}
+  .chart-wrapper{height:210px}
+  .chart-wrapper.tall{height:250px}
+  .chart-wrapper.short{height:170px}
+  /* Timeline vertical */
+  .timeline{flex-direction:column; gap:0}
+  .timeline-step::before{display:none}
+  .timeline-step{padding:8px 0; text-align:left; display:flex; gap:12px; align-items:center; min-width:0; flex:none}
+  .timeline-step::after{
+    content:""; position:absolute; left:15px; top:38px; bottom:-8px;
+    width:2px; background:var(--border);
+  }
+  .timeline-step.done::after{background:var(--success)}
+  .timeline-step:last-child::after{display:none}
+  .timeline-step{position:relative}
+  .timeline-dot{margin:0; width:30px; height:30px; flex-shrink:0}
+  .timeline-step .tl-label{margin:0; font-size:11px}
+  .timeline-step .tl-date{margin:0 0 0 auto; font-size:10.5px}
+  /* Modais maiores */
+  .modal-backdrop{padding:16px 10px}
+  .modal{max-width:100%}
+  .modal-body{padding:16px; max-height:calc(100vh - 140px)}
+  .modal-header{padding:16px 18px}
+  /* Kanban */
+  .kanban-board{grid-template-columns:repeat(6, 82vw); gap:10px; padding-bottom:10px; scroll-snap-type:x mandatory}
+  .kanban-col{scroll-snap-align:start}
+  .kanban-cards{max-height:70vh}
+  /* Tabela */
+  .table-wrap{border-radius:10px}
+  .table-scroll{margin:0 -14px; padding:0 14px}
+  /* Paginação */
+  .pagination{flex-direction:column; gap:12px; padding:14px}
+  .pagination-controls{justify-content:center; flex-wrap:wrap}
+  .pagination-info{text-align:center}
+  /* Detail grid */
+  .detail-grid{grid-template-columns:1fr}
+  .modal-edit .row{grid-template-columns:1fr}
+  /* Danger zone */
+  .danger-zone .dz-actions{flex-direction:column}
+  .danger-zone .dz-actions button{width:100%; justify-content:center}
+  /* Confirm modal */
+  .confirm-modal{max-width:100%}
+  .confirm-modal .cb-actions{flex-direction:column-reverse}
+  .confirm-modal .cb-actions button{width:100%; justify-content:center}
+  /* Planos de ação */
+  .plan-card-actions{flex-direction:column-reverse}
+  .plan-card-actions button{width:100%; justify-content:center}
+}
+
+/* ============================================================
+   RESPONSIVIDADE — MOBILE (até 600px)
+   ============================================================ */
+@media(max-width:600px){
+  :root{--topbar-h:53px;}
+  .topbar{padding:10px 12px}
+  .topbar .logo{width:30px; height:30px; font-size:12px}
+  .topbar h1{font-size:12.5px}
+  .user-email{display:none}
+  .tabs-nav{padding:0 12px}
+  .tab-btn{padding:11px 10px; font-size:12px; gap:5px}
+  .tab-btn .icon{font-size:12px}
+  .tab-btn span:not(.icon){font-size:11.5px}
+  .dash-container{padding:14px 12px 36px}
+  .inst-header{padding:12px}
+  .inst-right{width:100%; gap:14px; justify-content:space-between}
+  .inst-meta-item .label{font-size:9.5px}
+  .inst-meta-item .value{font-size:12px}
+  .inst-meta-item .value em{font-size:13px}
+  .kpi-grid{grid-template-columns:1fr; gap:10px}
+  .kpi-card{padding:14px}
+  .kpi-card .kpi-value{font-size:26px}
+  .filter-bar{padding:14px 12px}
+  .filter-row, .filter-row.r2, .filter-row.r3{grid-template-columns:1fr; gap:10px}
+  .filter-row .filter-field:nth-child(1){grid-column:auto}
+  .filter-field input, .filter-field select{padding:11px 12px; min-height:44px}
+  .btn{min-height:42px; padding:10px 14px}
+  /* Charts */
+  .chart-wrapper{height:200px}
+  .chart-wrapper.tall{height:240px}
+  .chart-wrapper.short{height:170px}
+  .chart-card{padding:14px}
+  .chart-card h3{font-size:11px; padding-bottom:8px; margin-bottom:12px}
+  /* Tabela - scroll maior no mobile */
+  table{min-width:1300px}
+  .modal-body{padding:14px}
+  .modal-header{padding:14px}
+  .modal-header h2{font-size:15px}
+  .detail-section h3{font-size:10.5px}
+  .detail-item .value{font-size:13px}
+  .subsection{padding:14px}
+  /* Kanban */
+  .kanban-board{grid-template-columns:repeat(6, 88vw)}
+  .kanban-col{padding:10px}
+  .kanban-card{padding:10px}
+  /* Timeline vertical mais compacto */
+  .timeline-step{padding:6px 0; gap:10px}
+  .timeline-dot{width:26px; height:26px; font-size:11px}
+  .timeline-step::after{left:12px; top:32px}
+  .timeline-step .tl-label{font-size:10.5px}
+}
+
+/* ============================================================
+   RESPONSIVIDADE — MOBILE PEQUENO (até 400px)
+   ============================================================ */
+@media(max-width:400px){
+  .topbar{padding:8px 10px}
+  .topbar .logo{width:28px; height:28px; font-size:11px}
+  .topbar h1{font-size:11.5px; letter-spacing:0}
+  .btn-logout{padding:6px 9px; font-size:11px}
+  .tabs-nav{padding:0 8px}
+  .tab-btn{padding:10px 8px; font-size:11px; gap:4px}
+  .tab-btn .icon{font-size:11px}
+  .tab-btn span:not(.icon){font-size:10.5px}
+  .dash-container{padding:12px 10px 32px}
+  .kpi-card{padding:12px}
+  .kpi-card .kpi-label{font-size:10px}
+  .kpi-card .kpi-value{font-size:22px}
+  .kpi-card .kpi-icon{width:24px; height:24px; font-size:12px}
+  .filter-bar{padding:12px 10px}
+  .btn{font-size:11.5px; padding:9px 12px}
+  .chart-wrapper{height:180px}
+  .chart-wrapper.tall{height:220px}
+  .chart-wrapper.short{height:160px}
+  .chart-card{padding:12px}
+  .modal-body{padding:12px}
+  .modal-header{padding:12px}
+  .modal-close{width:32px; height:32px; font-size:16px}
+  .plan-card{padding:12px}
+  .ishikawa-field input, .ishikawa-field textarea{font-size:12.5px}
+  .why-num{width:24px; height:24px; font-size:10px}
+  /* Kanban ainda mais estreito */
+  .kanban-board{grid-template-columns:repeat(6, 92vw)}
+}
+
+/* ============================================================
+   ACESSIBILIDADE
+   ============================================================ */
+@media(prefers-reduced-motion:reduce){
+  *, *::before, *::after{
+    animation-duration:.001ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.001ms !important;
+    scroll-behavior:auto !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<section class="login-page" id="loginPage">
+  <div class="login-card">
+    <div class="logo">+</div>
+    <h1>Painel NSP</h1>
+    <p class="subtitle">Núcleo de Segurança do Paciente — Acesso restrito</p>
+    <div class="alert alert-error" id="loginError"></div>
+    <div class="alert alert-warning" id="lockError"></div>
+    <form id="loginForm">
+      <div class="field"><label for="email">E-mail</label><input id="email" name="email" type="email" autocomplete="email" required></div>
+      <div class="field"><label for="password">Senha</label><input id="password" name="password" type="password" autocomplete="current-password" required></div>
+      <button type="submit" class="btn-primary" id="loginBtn">Entrar</button>
+    </form>
+    <p class="footer-note">Sistema de Notificação de Incidentes</p>
+    <p class="security-hint">🔒 Conexão segura</p>
+  </div>
+</section>
+
+<!-- ===== DASHBOARD ===== -->
+<section id="dashboard" hidden>
+
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="logo">+</div>
+      <div>
+        <h1>Painel do Núcleo de Segurança do Paciente</h1>
+        <div class="subtitle">Notificações de Incidentes e Gestão da Qualidade</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="user-email" id="userEmail"></span>
+      <button class="btn-logout" id="logoutBtn">Sair</button>
+    </div>
+  </div>
+
+  <div class="inst-header">
+    <div class="inst-header-inner">
+      <div class="inst-left">
+        <div class="company-name">Sugisawa Diagnósticos Por Imagem</div>
+        <div class="report-title">Programa de Segurança do Paciente • Registros e Tratamento de Não Conformidades</div>
+      </div>
+      <div class="inst-right">
+        <div class="inst-meta-item"><span class="label">Ano</span><span class="value"><em id="infoAno">—</em></span></div>
+        <div class="inst-meta-item"><span class="label">Responsável pelos dados</span><span class="value">Ronielson Pereira Barbosa</span></div>
+        <div class="inst-meta-item"><span class="label">Última atualização</span><span class="value" id="infoUpdate">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs-nav">
+    <div class="tabs-nav-inner">
+      <button class="tab-btn active" data-tab="executivo"><span class="icon">🎯</span><span>Dashboard Executivo</span></button>
+      <button class="tab-btn" data-tab="visao"><span class="icon">📊</span><span>Visão Operacional</span></button>
+      <button class="tab-btn" data-tab="kanban"><span class="icon">📌</span><span>Workflow</span></button>
+      <button class="tab-btn" data-tab="planilha"><span class="icon">📋</span><span>Planilha Completa</span></button>
+      <button class="tab-btn" data-tab="analise"><span class="icon">📈</span><span>Análise Avançada</span></button>
+      <button class="tab-btn" data-tab="licoes"><span class="icon">💡</span><span>Lições Aprendidas</span></button>
+    </div>
+  </div>
+
+  <div class="dash-container">
+
+    <!-- ===== FILTERS ===== -->
+    <div class="filter-bar" id="filterBar">
+      <div class="filter-bar-title"><span>🔍</span><span>Filtros</span></div>
+      <div class="filter-row">
+        <div class="filter-field"><label for="fBusca">Busca livre</label><input type="text" id="fBusca" placeholder="Paciente, prontuário, notificante, descrição..."></div>
+        <div class="filter-field"><label for="fAno">Ano</label><select id="fAno"><option value="">Todos</option></select></div>
+        <div class="filter-field"><label for="fMes">Mês</label><select id="fMes"><option value="">Todos</option></select></div>
+        <div class="filter-field"><label for="fClass">Classificação</label>
+          <select id="fClass">
+            <option value="">Todas</option>
+            <option value="Circunstância de Risco / Falhas de processo">Circunstância de Risco</option>
+            <option value="Evento sem dano">Evento sem dano</option>
+            <option value="Evento com dano leve">Evento com dano leve</option>
+            <option value="Evento com dano moderado">Evento com dano moderado</option>
+            <option value="Evento com dano grave">Evento com dano grave</option>
+            <option value="Evento com óbito">Evento com óbito</option>
+            <option value="Evento sentinela">Evento sentinela</option>
+          </select>
+        </div>
+        <div class="filter-field"><label for="fStatus">Status</label>
+          <select id="fStatus">
+            <option value="">Todos</option>
+            <option value="Em andamento">Em andamento</option>
+            <option value="Em análise">Em análise</option>
+            <option value="Concluído">Concluído</option>
+            <option value="Arquivado">Arquivado</option>
+            <option value="Cancelado">Cancelado</option>
+          </select>
+        </div>
+      </div>
+      <div class="filter-row r2">
+        <div class="filter-field"><label for="fWorkflow">Workflow</label>
+          <select id="fWorkflow">
+            <option value="">Todos</option>
+            <option value="Notificada">Notificada</option>
+            <option value="Triagem">Em Triagem</option>
+            <option value="Investigação">Em Investigação</option>
+            <option value="Plano de Ação">Plano de Ação</option>
+            <option value="Verificação">Verificação</option>
+            <option value="Encerrada">Encerrada</option>
+          </select>
+        </div>
+        <div class="filter-field"><label for="fDataIni">Data inicial</label><input type="date" id="fDataIni"></div>
+        <div class="filter-field"><label for="fDataFim">Data final</label><input type="date" id="fDataFim"></div>
+        <div class="filter-field"><label for="fSetor">Setor notificante</label><select id="fSetor"><option value="">Todos</option></select></div>
+        <div class="filter-field"><label for="fTipo">Tipo de incidente</label><select id="fTipo"><option value="">Todos</option></select></div>
+      </div>
+      <div class="filter-actions">
+        <div class="results-count" id="resultsCount"><strong>—</strong> notificações</div>
+        <div class="buttons">
+          <button class="btn btn-outline" id="btnLimpar">Limpar filtros</button>
+          <button class="btn btn-primary-2" id="btnExport">📥 Exportar Excel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: DASHBOARD EXECUTIVO ===== -->
+    <div class="tab-content" id="tab-executivo">
+      <div class="kpi-grid">
+        <div class="kpi-card info"><div class="kpi-top"><div class="kpi-label">Total no Período</div><div class="kpi-icon">📋</div></div><div class="kpi-value" id="exTotal">—</div><div class="kpi-sub" id="exTotalSub">carregando...</div></div>
+        <div class="kpi-card danger"><div class="kpi-top"><div class="kpi-label">Eventos Graves</div><div class="kpi-icon">🚨</div></div><div class="kpi-value" id="exGraves">—</div><div class="kpi-sub">dano grave, óbito ou sentinela</div></div>
+        <div class="kpi-card success"><div class="kpi-top"><div class="kpi-label">Taxa de Resolução</div><div class="kpi-icon">✓</div></div><div class="kpi-value" id="exTaxa">—</div><div class="kpi-sub">casos encerrados</div></div>
+        <div class="kpi-card warning"><div class="kpi-top"><div class="kpi-label">Tempo Médio de Resolução</div><div class="kpi-icon">⏱</div></div><div class="kpi-value" id="exTempo">—</div><div class="kpi-sub">dias até encerramento</div></div>
+        <div class="kpi-card purple"><div class="kpi-top"><div class="kpi-label">Ações em Aberto</div><div class="kpi-icon">📝</div></div><div class="kpi-value" id="exAcoes">—</div><div class="kpi-sub">planos de ação pendentes</div></div>
+        <div class="kpi-card"><div class="kpi-top"><div class="kpi-label">Taxa de Notificação</div><div class="kpi-icon">📊</div></div><div class="kpi-value" id="exTaxaNotif">—</div><div class="kpi-sub">por mês (média)</div></div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card"><h3>📈 Evolução Mensal (12 meses)</h3><div class="chart-wrapper tall"><canvas id="exChartEvolucao"></canvas></div></div>
+        <div class="chart-card"><h3>🥧 Composição por Classificação</h3><div class="chart-wrapper tall"><canvas id="exChartClass"></canvas></div></div>
+        <div class="chart-card"><h3>🏆 Ranking de Setores Notificantes</h3><div class="chart-wrapper tall"><canvas id="exChartRanking"></canvas></div></div>
+        <div class="chart-card"><h3>📊 Comparativo Ano a Ano</h3><div class="chart-wrapper tall"><canvas id="exChartAnos"></canvas></div></div>
+      </div>
+
+      <div class="charts-grid" style="grid-template-columns:1fr 1fr 1fr">
+        <div class="chart-card">
+          <h3>⏱ Tempo Médio por Etapa (dias)</h3>
+          <div class="chart-wrapper short"><canvas id="exChartTempos"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>📌 Distribuição por Etapa do Workflow</h3>
+          <div class="chart-wrapper short"><canvas id="exChartWorkflow"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>🎯 Efetividade das Ações</h3>
+          <div class="chart-wrapper short"><canvas id="exChartAcoes"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: VISÃO OPERACIONAL ===== -->
+    <div class="tab-content" id="tab-visao" hidden>
+      <div class="kpi-grid">
+        <div class="kpi-card info"><div class="kpi-top"><div class="kpi-label">Total de Notificações</div><div class="kpi-icon">📋</div></div><div class="kpi-value" id="kpiTotal">—</div><div class="kpi-sub" id="kpiTotalSub">carregando...</div></div>
+        <div class="kpi-card danger"><div class="kpi-top"><div class="kpi-label">Notificações Obrigatórias</div><div class="kpi-icon">⚠️</div></div><div class="kpi-value" id="kpiObrig">—</div><div class="kpi-sub">dano moderado, grave ou óbito</div></div>
+        <div class="kpi-card success"><div class="kpi-top"><div class="kpi-label">Concluídas</div><div class="kpi-icon">✓</div></div><div class="kpi-value" id="kpiConcl">—</div><div class="kpi-sub" id="kpiConclSub">—</div></div>
+        <div class="kpi-card warning"><div class="kpi-top"><div class="kpi-label">Em Andamento</div><div class="kpi-icon">⏳</div></div><div class="kpi-value" id="kpiAnd">—</div><div class="kpi-sub">aguardando conclusão</div></div>
+        <div class="kpi-card purple"><div class="kpi-top"><div class="kpi-label">Com RCA</div><div class="kpi-icon">🔬</div></div><div class="kpi-value" id="kpiRca">—</div><div class="kpi-sub">análise de causa raiz</div></div>
+        <div class="kpi-card info"><div class="kpi-top"><div class="kpi-label">Média / Mês</div><div class="kpi-icon">📅</div></div><div class="kpi-value" id="kpiMedia">—</div><div class="kpi-sub">ano atual</div></div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card"><h3>📅 Notificações por Mês (ano atual)</h3><div class="chart-wrapper"><canvas id="chartMes"></canvas></div></div>
+        <div class="chart-card"><h3>🎯 Distribuição por Classificação</h3><div class="chart-wrapper"><canvas id="chartClass"></canvas></div></div>
+        <div class="chart-card"><h3>🏥 Top Setores Notificantes</h3><div class="chart-wrapper"><canvas id="chartSetor"></canvas></div></div>
+        <div class="chart-card"><h3>📌 Status das Notificações</h3><div class="chart-wrapper"><canvas id="chartStatus"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: WORKFLOW ===== -->
+    <div class="tab-content" id="tab-kanban" hidden>
+      <div class="kanban-board" id="kanbanBoard"></div>
+    </div>
+
+    <!-- ===== TAB: PLANILHA ===== -->
+    <div class="tab-content" id="tab-planilha" hidden>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table id="tablePlanilha">
+            <thead>
+              <tr>
+                <th class="sortable" data-key="mes">Mês Ref <span class="sort-icon">▼</span></th>
+                <th class="sortable" data-key="numero">Nº <span class="sort-icon">▼</span></th>
+                <th class="sortable" data-key="created_at">Timestamp <span class="sort-icon">▼</span></th>
+                <th class="sortable" data-key="data_incidente">Data <span class="sort-icon">▼</span></th>
+                <th>Workflow</th>
+                <th class="sortable" data-key="paciente">Paciente <span class="sort-icon">▼</span></th>
+                <th>Prontuário</th>
+                <th>Setor Notificante</th>
+                <th>Setor Notificado</th>
+                <th class="sortable" data-key="classificacao">Classificação <span class="sort-icon">▼</span></th>
+                <th>Tipo</th>
+                <th>Descrição</th>
+                <th>Ação</th>
+                <th>Notificante</th>
+                <th class="sortable" data-key="status">Status <span class="sort-icon">▼</span></th>
+                <th>Observação</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tablePlanilhaBody"></tbody>
+            <tfoot id="tablePlanilhaFoot"></tfoot>
+          </table>
+        </div>
+        <div class="empty-state" id="emptyState" hidden><div class="icon">📋</div><h3>Nenhuma notificação encontrada</h3><p>Ajuste os filtros ou aguarde novas notificações.</p></div>
+        <div class="pagination" id="pagination">
+          <div class="pagination-info" id="paginationInfo">—</div>
+          <div class="pagination-controls">
+            <label style="font-size:11.5px;color:var(--muted);margin-right:4px">Por página:</label>
+            <select id="pageSize"><option value="25">25</option><option value="50" selected>50</option><option value="100">100</option><option value="all">Todos</option></select>
+            <button class="page-btn" id="btnFirstPage">«</button>
+            <button class="page-btn" id="btnPrevPage">‹</button>
+            <span id="pageNumbers" style="display:flex;gap:4px"></span>
+            <button class="page-btn" id="btnNextPage">›</button>
+            <button class="page-btn" id="btnLastPage">»</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: ANÁLISE ===== -->
+    <div class="tab-content" id="tab-analise" hidden>
+      <div class="charts-grid">
+        <div class="chart-card"><h3>📈 Tendência Mensal (atual vs anterior)</h3><div class="chart-wrapper tall"><canvas id="chartTrend"></canvas></div></div>
+        <div class="chart-card"><h3>⚠️ Tipos de Incidente</h3><div class="chart-wrapper tall"><canvas id="chartTipo"></canvas></div></div>
+        <div class="chart-card"><h3>🎯 Classificação × Status</h3><div class="chart-wrapper tall"><canvas id="chartClassStatus"></canvas></div></div>
+        <div class="chart-card"><h3>🏥 Setor Notificante × Notificado</h3><div class="chart-wrapper tall"><canvas id="chartSetorCruz"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: LIÇÕES APRENDIDAS ===== -->
+    <div class="tab-content" id="tab-licoes" hidden>
+      <div style="margin-bottom:14px;font-size:13px;color:var(--muted);">
+        Casos marcados como <strong style="color:var(--purple)">publicáveis</strong> no encerramento. Use esta biblioteca para treinamentos e comunicação interna.
+      </div>
+      <div id="lessonsList"></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ===== MODAL DETALHES ===== -->
+<div class="modal-backdrop" id="modalBackdrop" hidden>
+  <div class="modal wide" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <div><h2 id="modalTitle">Detalhes da notificação</h2><div class="sub" id="modalSubtitle"></div></div>
+      <button class="modal-close" id="modalClose">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- ===== MODAL CONFIRMAÇÃO EXCLUSÃO ===== -->
+<div class="confirm-backdrop" id="confirmBackdrop" hidden>
+  <div class="confirm-modal" role="alertdialog">
+    <div class="modal-header"><h2>⚠️ Confirmar exclusão permanente</h2></div>
+    <div class="modal-body">
+      <p class="cb-text">Você está prestes a excluir permanentemente a notificação <strong id="confirmNum">—</strong>.</p>
+      <div class="cb-warning"><strong>Esta ação não pode ser desfeita.</strong><br>O registro será apagado do banco de dados. Considere <strong>cancelar</strong> a notificação em vez de excluí-la, caso queira manter o histórico.</div>
+      <label class="cb-label" for="confirmInput">Digite <code>EXCLUIR</code> para confirmar:</label>
+      <input type="text" id="confirmInput" autocomplete="off" spellcheck="false" placeholder="Digite aqui...">
+      <div class="cb-actions">
+        <button class="btn btn-outline" id="btnCancelConfirm" type="button">Cancelar</button>
+        <button class="btn btn-danger" id="btnConfirmDelete" type="button" disabled>🗑️ Excluir permanentemente</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== LOADING ===== -->
+<div class="loading-overlay" id="loadingOverlay" hidden><div class="spinner"></div><span>Carregando...</span></div>
+
+<script>
+(function(){
+  'use strict';
+
+  const SUPABASE_URL = 'https://fnuhhkopbosfxwwlxvxe.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_P9l9b0oZYQDjtwf5ALXq9g_O9_hR0TP';
+
+  const MAX_TENTATIVAS = 5;
+  const BLOQUEIO_MS = 15 * 60 * 1000;
+
+  const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const MESES_CURTO = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const STATUS_OPTIONS = ['Em andamento','Em análise','Concluído','Arquivado','Cancelado'];
+  const WORKFLOW_OPTIONS = ['Notificada','Triagem','Investigação','Plano de Ação','Verificação','Encerrada'];
+  const WORKFLOW_LABELS = {
+    'Notificada':'Notificada',
+    'Triagem':'Em Triagem',
+    'Investigação':'Em Investigação',
+    'Plano de Ação':'Plano de Ação',
+    'Verificação':'Verificação',
+    'Encerrada':'Encerrada'
+  };
+  const WORKFLOW_ICONS = {
+    'Notificada':'📥','Triagem':'🔍','Investigação':'🔬','Plano de Ação':'📝','Verificação':'✅','Encerrada':'🏁'
+  };
+
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false,
+      storage: { getItem: () => null, setItem: () => {}, removeItem: () => {} } }
+  });
+
+  const loginPage = document.getElementById('loginPage');
+  const dashboard = document.getElementById('dashboard');
+  const loginError = document.getElementById('loginError');
+  const lockError = document.getElementById('lockError');
+  const loginBtn = document.getElementById('loginBtn');
+  const loadingOverlay = document.getElementById('loadingOverlay');
+  const modalBackdrop = document.getElementById('modalBackdrop');
+  const modalBody = document.getElementById('modalBody');
+  const modalSubtitle = document.getElementById('modalSubtitle');
+  const confirmBackdrop = document.getElementById('confirmBackdrop');
+  const confirmInput = document.getElementById('confirmInput');
+  const btnConfirmDelete = document.getElementById('btnConfirmDelete');
+
+  let todasNotificacoes = [];
+  let filtradas = [];
+  let todosActionPlans = [];
+  let todasRca = [];
+  let sortKey = 'created_at';
+  let sortDir = 'desc';
+  let currentPage = 1;
+  let pageSize = 50;
+  let notifParaExcluir = null;
+  let charts = {};
+
+  // ===== Helpers =====
+  const $ = id => document.getElementById(id);
+  const showLoading = on => loadingOverlay.hidden = !on;
+  const escapeHtml = s => s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  const fmtDate = iso => { if(!iso) return '—'; const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[3]+'/'+m[2]+'/'+m[1] : iso; };
+  const fmtDateTime = iso => { if(!iso) return '—'; try { return new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); } catch(e){ return iso; } };
+  const fmtDateTimeShort = iso => { if(!iso) return '—'; try { return new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}); } catch(e){ return iso; } };
+  const anoDe = iso => { const m = String(iso||'').match(/^(\d{4})/); return m ? m[1] : ''; };
+  const mesDe = iso => { const m = String(iso||'').match(/^\d{4}-(\d{2})/); if(!m) return ''; const i = parseInt(m[1],10)-1; return (i>=0&&i<12) ? MESES[i] : ''; };
+  const diasEntre = (a,b) => { if(!a||!b) return null; try { return Math.round((new Date(b)-new Date(a))/86400000); } catch(e){ return null; } };
+  const numeroNotificacao = n => (anoDe(n.data_incidente || n.created_at) || '—') + '-' + String(n.id).padStart(4,'0');
+  const isObrigatoria = c => ['Evento com dano moderado','Evento com dano grave','Evento com óbito'].includes(c);
+  const isGrave = c => ['Evento com dano grave','Evento com óbito','Evento sentinela'].includes(c);
+  const classBadge = c => ({'Circunstância de Risco / Falhas de processo':'badge-risco','Evento sem dano':'badge-sem-dano','Evento com dano leve':'badge-leve','Evento com dano moderado':'badge-moderado','Evento com dano grave':'badge-grave','Evento com óbito':'badge-obito','Evento sentinela':'badge-sentinela'}[c]||'badge-risco');
+  const statusBadge = s => ({'Em andamento':'status-andamento','Em análise':'status-analise','Concluído':'status-concluido','Arquivado':'status-arquivado','Cancelado':'status-cancelado'}[s]||'status-andamento');
+  const wfBadge = s => ({'Notificada':'wf-notificada','Triagem':'wf-triagem','Investigação':'wf-investigacao','Plano de Ação':'wf-acao','Verificação':'wf-verificacao','Encerrada':'wf-encerrada'}[s]||'wf-notificada');
+  const corClassificacao = c => ({'Circunstância de Risco / Falhas de processo':'#526571','Evento sem dano':'#2a6fa8','Evento com dano leve':'#b8860b','Evento com dano moderado':'#b85516','Evento com dano grave':'#c0392b','Evento com óbito':'#5a1a1a','Evento sentinela':'#7c3aed'}[c]||'#526571');
+  const wfAtual = n => n.workflow_status || 'Notificada';
+
+  // ===== Rate limit =====
+  function verificarBloqueio(){
+    const fails = parseInt(localStorage.getItem('admin_fails')||'0',10);
+    if(fails < MAX_TENTATIVAS) return false;
+    const ultima = parseInt(localStorage.getItem('admin_last_fail')||'0',10);
+    const restante = BLOQUEIO_MS - (Date.now()-ultima);
+    if(restante <= 0){ localStorage.removeItem('admin_fails'); localStorage.removeItem('admin_last_fail'); return false; }
+    const min = Math.ceil(restante/60000);
+    lockError.textContent = '🔒 Muitas tentativas. Tente em '+min+' min.';
+    lockError.classList.add('show'); loginBtn.disabled = true; return true;
+  }
+  function registrarFalha(){
+    const f = parseInt(localStorage.getItem('admin_fails')||'0',10)+1;
+    localStorage.setItem('admin_fails',String(f));
+    localStorage.setItem('admin_last_fail',String(Date.now()));
+    if(f >= MAX_TENTATIVAS){ lockError.textContent='🔒 Conta bloqueada por 15 minutos.'; lockError.classList.add('show'); loginBtn.disabled=true; }
+  }
+  function limparFalhas(){ localStorage.removeItem('admin_fails'); localStorage.removeItem('admin_last_fail'); lockError.classList.remove('show'); loginBtn.disabled=false; }
+
+  async function registrarLog(action, extra){
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from('admin_access_log').insert([{ user_email: user?user.email:null, action, user_agent: navigator.userAgent + (extra?' | '+extra:'') }]);
+    } catch(e){ console.warn('Log:',e); }
+  }
+
+  // ===== Login =====
+  $('loginForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    if(verificarBloqueio()) return;
+    loginError.classList.remove('show');
+    loginBtn.disabled = true; loginBtn.textContent = 'Entrando...';
+    const email = $('email').value.trim();
+    const password = $('password').value;
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    loginBtn.textContent = 'Entrar';
+    if(error){
+      loginError.textContent = 'E-mail ou senha incorretos.';
+      loginError.classList.add('show');
+      $('password').value = '';
+      registrarFalha(); verificarBloqueio(); return;
+    }
+    limparFalhas(); await entrarNoPainel();
+  });
+
+  $('logoutBtn').addEventListener('click', async () => {
+    await registrarLog('logout');
+    await supabase.auth.signOut();
+    dashboard.hidden = true; loginPage.hidden = false;
+    $('loginForm').reset();
+    todasNotificacoes = []; filtradas = []; todosActionPlans = []; todasRca = [];
+    Object.values(charts).forEach(c => { try{ c.destroy(); }catch(e){} }); charts = {};
+  });
+
+  function init(){
+    if(verificarBloqueio()) return;
+    loginPage.hidden = false; dashboard.hidden = true;
+  }
+
+  async function entrarNoPainel(){
+    loginPage.hidden = true; dashboard.hidden = false;
+    const { data: { user } } = await supabase.auth.getUser();
+    $('userEmail').textContent = user ? user.email : '';
+    await registrarLog('login');
+    await carregarDados();
+  }
+
+  // ===== Dados =====
+  async function carregarDados(){
+    showLoading(true);
+    try {
+      const [rInc, rAp, rRca] = await Promise.all([
+        supabase.from('incidents').select('*').order('created_at',{ascending:false}).limit(10000),
+        supabase.from('action_plans').select('*'),
+        supabase.from('rca_analyses').select('*')
+      ]);
+      if(rInc.error) throw rInc.error;
+      todasNotificacoes = rInc.data || [];
+      todosActionPlans = rAp.data || [];
+      todasRca = rRca.data || [];
+      popularFiltrosDinamicos();
+      atualizarInfoHeader();
+      aplicarFiltros();
+    } catch(err){
+      console.error('Erro:', err);
+      alert('Não foi possível carregar.\n\n' + (err.message || 'erro'));
+      await supabase.auth.signOut();
+      dashboard.hidden = true; loginPage.hidden = false;
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  function atualizarInfoHeader(){
+    const anos = new Set();
+    todasNotificacoes.forEach(n => { const a = anoDe(n.data_incidente || n.created_at); if(a) anos.add(a); });
+    const arr = Array.from(anos).sort();
+    $('infoAno').textContent = arr.length ? arr.join(' / ') : '—';
+    $('infoUpdate').textContent = fmtDateTime(new Date().toISOString());
+  }
+
+  function popularFiltrosDinamicos(){
+    const anos = new Set(), setores = new Set(), tipos = new Set();
+    todasNotificacoes.forEach(n => {
+      const a = anoDe(n.data_incidente||n.created_at); if(a) anos.add(a);
+      if(n.setor_notificante) setores.add(n.setor_notificante);
+      if(n.tipo_incidente) tipos.add(n.tipo_incidente);
+    });
+    fillSelect('fAno', Array.from(anos).sort().reverse());
+    fillSelect('fMes', MESES);
+    fillSelect('fSetor', Array.from(setores).sort());
+    fillSelect('fTipo', Array.from(tipos).sort());
+  }
+
+  function fillSelect(id, valores){
+    const sel = $(id); const atual = sel.value;
+    while(sel.options.length>1) sel.remove(1);
+    valores.forEach(v => { const o = document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o); });
+    sel.value = atual;
+  }
+
+  // ===== Filtros =====
+  function aplicarFiltros(){
+    const busca = $('fBusca').value.trim().toLowerCase();
+    const ano = $('fAno').value, mes = $('fMes').value;
+    const classi = $('fClass').value, status = $('fStatus').value;
+    const wf = $('fWorkflow').value;
+    const dI = $('fDataIni').value, dF = $('fDataFim').value;
+    const setor = $('fSetor').value, tipo = $('fTipo').value;
+
+    filtradas = todasNotificacoes.filter(n => {
+      const dt = n.data_incidente || '';
+      if(dI && dt < dI) return false;
+      if(dF && dt > dF) return false;
+      if(ano && anoDe(dt) !== ano) return false;
+      if(mes && mesDe(dt) !== mes) return false;
+      if(classi && n.classificacao !== classi) return false;
+      if(status && (n.status || 'Em andamento') !== status) return false;
+      if(wf && wfAtual(n) !== wf) return false;
+      if(setor && n.setor_notificante !== setor) return false;
+      if(tipo && n.tipo_incidente !== tipo) return false;
+      if(busca){
+        const blob = [n.paciente,n.prontuario,n.notificante,n.descricao,n.tipo_incidente,n.tipo_incidente_outros,n.setor_notificante,n.setor_notificado,n.observacao,n.status,numeroNotificacao(n)].filter(Boolean).join(' ').toLowerCase();
+        if(!blob.includes(busca)) return false;
+      }
+      return true;
+    });
+
+    aplicarOrdenacao();
+    atualizarContador();
+    renderExecutivo();
+    renderVisao();
+    renderKanban();
+    renderTabelaPlanilha();
+    renderAnalise();
+    renderLicoes();
+  }
+
+  function aplicarOrdenacao(){
+    filtradas.sort((a,b) => {
+      let av, bv;
+      if(sortKey==='mes'){ av=mesDe(a.data_incidente); bv=mesDe(b.data_incidente); }
+      else if(sortKey==='numero'){ av=a.id; bv=b.id; }
+      else if(sortKey==='status'){ av=a.status||'Em andamento'; bv=b.status||'Em andamento'; }
+      else { av=a[sortKey]; bv=b[sortKey]; }
+      if(av==null) av=''; if(bv==null) bv='';
+      if(typeof av==='number' && typeof bv==='number') return sortDir==='asc' ? av-bv : bv-av;
+      const sa = String(av).toLowerCase(), sb = String(bv).toLowerCase();
+      if(sa<sb) return sortDir==='asc' ? -1 : 1;
+      if(sa>sb) return sortDir==='asc' ? 1 : -1;
+      return 0;
+    });
+  }
+
+  function atualizarContador(){
+    const t = todasNotificacoes.length, m = filtradas.length;
+    const el = $('resultsCount');
+    if(m===t) el.innerHTML = '<strong>'+t+'</strong> notificaç'+(t===1?'ão':'ões');
+    else el.innerHTML = '<strong>'+m+'</strong> de '+t+' notificaç'+(t===1?'ão':'ões');
+  }
+
+  // ===== KPIs =====
+  function atualizarKPIsComuns(){
+    const base = filtradas.length ? filtradas : todasNotificacoes;
+    const total = base.length;
+    $('kpiTotal').textContent = total;
+    $('kpiTotalSub').textContent = (filtradas.length && filtradas.length !== todasNotificacoes.length) ? 'de '+todasNotificacoes.length+' no total' : (total===1?'registro':'registros');
+    $('kpiObrig').textContent = base.filter(n => isObrigatoria(n.classificacao)).length;
+    const concl = base.filter(n => n.status === 'Concluído').length;
+    $('kpiConcl').textContent = concl;
+    $('kpiConclSub').textContent = total ? Math.round((concl/total)*100)+'% do total' : '—';
+    $('kpiAnd').textContent = base.filter(n => !n.status || n.status==='Em andamento' || n.status==='Em análise').length;
+    const idsComRca = new Set(todasRca.map(r => r.incident_id));
+    $('kpiRca').textContent = base.filter(n => idsComRca.has(n.id)).length;
+    const anoAtual = new Date().getFullYear().toString();
+    const noAno = base.filter(n => anoDe(n.data_incidente||n.created_at)===anoAtual);
+    const meses = new Set();
+    noAno.forEach(n => { const m = mesDe(n.data_incidente); if(m) meses.add(m); });
+    $('kpiMedia').textContent = meses.size ? (noAno.length/meses.size).toFixed(1) : '—';
+  }
+
+  function renderVisao(){
+    atualizarKPIsComuns();
+    const base = filtradas;
+    const anoAtual = new Date().getFullYear().toString();
+    const porMes = {}; MESES.forEach(m => porMes[m]=0);
+    base.forEach(n => { const a = anoDe(n.data_incidente||n.created_at); const m = mesDe(n.data_incidente); if(a===anoAtual && m) porMes[m]++; });
+    destroyChart('chartMes');
+    charts.chartMes = new Chart($('chartMes').getContext('2d'), {
+      type:'bar', data:{ labels: MESES_CURTO, datasets:[{ label:'Notificações', data: MESES.map(m=>porMes[m]), backgroundColor:'#0f6e8c', borderRadius:6 }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} }, scales:{ y:{ beginAtZero:true, ticks:{precision:0}, grid:{color:'#eef1f4'} }, x:{ grid:{display:false} } } }
+    });
+
+    const porClass = agrupar(base, n => n.classificacao);
+    destroyChart('chartClass');
+    charts.chartClass = new Chart($('chartClass').getContext('2d'), {
+      type:'doughnut', data:{ labels:Object.keys(porClass), datasets:[{ data:Object.values(porClass), backgroundColor:Object.keys(porClass).map(corClassificacao), borderWidth:2, borderColor:'#fff' }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{boxWidth:10,padding:6,font:{size:10}} } }, cutout:'60%' }
+    });
+
+    const porSetor = agrupar(base, n => n.setor_notificante);
+    const top = Object.entries(porSetor).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    destroyChart('chartSetor');
+    charts.chartSetor = new Chart($('chartSetor').getContext('2d'), {
+      type:'bar', data:{ labels:top.map(e=>e[0]), datasets:[{ data:top.map(e=>e[1]), backgroundColor:'#2a8aa5', borderRadius:6 }] },
+      options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y', plugins:{ legend:{display:false} }, scales:{ x:{ beginAtZero:true, ticks:{precision:0} }, y:{ grid:{display:false}, ticks:{font:{size:10}} } } }
+    });
+
+    const porStatus = agrupar(base, n => n.status||'Em andamento');
+    const cores = {'Em andamento':'#2a6fa8','Em análise':'#b8860b','Concluído':'#1a7f4b','Arquivado':'#526571','Cancelado':'#c0392b'};
+    destroyChart('chartStatus');
+    charts.chartStatus = new Chart($('chartStatus').getContext('2d'), {
+      type:'doughnut', data:{ labels:Object.keys(porStatus), datasets:[{ data:Object.values(porStatus), backgroundColor:Object.keys(porStatus).map(s=>cores[s]||'#526571'), borderWidth:2, borderColor:'#fff' }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{boxWidth:10,padding:6,font:{size:10}} } }, cutout:'60%' }
+    });
+  }
+
+  function renderExecutivo(){
+    const base = filtradas.length ? filtradas : todasNotificacoes;
+    const total = base.length;
+    $('exTotal').textContent = total;
+    $('exTotalSub').textContent = (filtradas.length && filtradas.length !== todasNotificacoes.length) ? 'de '+todasNotificacoes.length+' no total' : 'no período';
+
+    $('exGraves').textContent = base.filter(n => isGrave(n.classificacao)).length;
+
+    const encerradas = base.filter(n => wfAtual(n) === 'Encerrada' || n.status === 'Concluído');
+    $('exTaxa').textContent = total ? Math.round((encerradas.length/total)*100)+'%' : '—';
+
+    // Tempo médio de resolução
+    const encerradasComData = base.filter(n => n.data_encerramento && n.created_at);
+    const tempos = encerradasComData.map(n => diasEntre(n.created_at, n.data_encerramento)).filter(d => d !== null && d >= 0);
+    $('exTempo').textContent = tempos.length ? Math.round(tempos.reduce((a,b)=>a+b,0)/tempos.length) : '—';
+
+    const planosAbertos = todosActionPlans.filter(p => p.status !== 'Concluído' && p.status !== 'Cancelado');
+    $('exAcoes').textContent = planosAbertos.length;
+
+    const anoAtual = new Date().getFullYear().toString();
+    const noAno = base.filter(n => anoDe(n.data_incidente||n.created_at) === anoAtual);
+    const meses = new Set();
+    noAno.forEach(n => { const m = mesDe(n.data_incidente); if(m) meses.add(m); });
+    $('exTaxaNotif').textContent = meses.size ? (noAno.length/meses.size).toFixed(1) : '—';
+
+    // Chart: evolução 12 meses
+    const hoje = new Date();
+    const meses12 = [];
+    for(let i=11; i>=0; i--){
+      const d = new Date(hoje.getFullYear(), hoje.getMonth()-i, 1);
+      meses12.push({ label: MESES_CURTO[d.getMonth()], ano: d.getFullYear(), mes: MESES[d.getMonth()], count: 0 });
+    }
+    base.forEach(n => {
+      const a = parseInt(anoDe(n.data_incidente||n.created_at),10);
+      const m = mesDe(n.data_incidente);
+      const found = meses12.find(x => x.ano===a && x.mes===m);
+      if(found) found.count++;
+    });
+    destroyChart('exChartEvolucao');
+    charts.exChartEvolucao = new Chart($('exChartEvolucao').getContext('2d'), {
+      type:'line',
+      data:{ labels:meses12.map(x=>x.label), datasets:[{ label:'Notificações', data:meses12.map(x=>x.count), borderColor:'#0f6e8c', backgroundColor:'rgba(15,110,140,.1)', fill:true, tension:.35, borderWidth:2, pointRadius:4, pointBackgroundColor:'#0f6e8c' }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} }, scales:{ y:{ beginAtZero:true, ticks:{precision:0}, grid:{color:'#eef1f4'} }, x:{ grid:{display:false} } } }
+    });
+
+    // Composição classificação
+    const porClass = agrupar(base, n => n.classificacao);
+    destroyChart('exChartClass');
+    charts.exChartClass = new Chart($('exChartClass').getContext('2d'), {
+      type:'pie', data:{ labels:Object.keys(porClass), datasets:[{ data:Object.values(porClass), backgroundColor:Object.keys(porClass).map(corClassificacao), borderWidth:2, borderColor:'#fff' }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{boxWidth:10,padding:6,font:{size:10}} } } }
+    });
+
+    // Ranking setores
+    const porSetor = agrupar(base, n => n.setor_notificante);
+    const top = Object.entries(porSetor).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    destroyChart('exChartRanking');
+    charts.exChartRanking = new Chart($('exChartRanking').getContext('2d'), {
+      type:'bar', data:{ labels:top.map(e=>e[0]), datasets:[{ data:top.map(e=>e[1]), backgroundColor:'#0f6e8c', borderRadius:6 }] },
+      options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y', plugins:{ legend:{display:false} }, scales:{ x:{ beginAtZero:true, ticks:{precision:0} }, y:{ grid:{display:false}, ticks:{font:{size:10}} } } }
+    });
+
+    // Comparativo anos
+    const porAno = agrupar(base, n => anoDe(n.data_incidente||n.created_at));
+    const anos = Object.entries(porAno).sort((a,b)=>a[0].localeCompare(b[0]));
+    destroyChart('exChartAnos');
+    charts.exChartAnos = new Chart($('exChartAnos').getContext('2d'), {
+      type:'bar', data:{ labels:anos.map(e=>e[0]), datasets:[{ label:'Notificações', data:anos.map(e=>e[1]), backgroundColor:'#b8860b', borderRadius:6 }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} }, scales:{ y:{ beginAtZero:true, ticks:{precision:0} }, x:{ grid:{display:false} } } }
+    });
+
+    // Tempos por etapa
+    const comTriagem = base.filter(n => n.data_triagem && n.created_at);
+    const tTriagem = comTriagem.map(n => diasEntre(n.created_at, n.data_triagem)).filter(d => d !== null && d >= 0);
+    const comInv = base.filter(n => n.data_investigacao && n.data_triagem);
+    const tInv = comInv.map(n => diasEntre(n.data_triagem, n.data_investigacao)).filter(d => d !== null && d >= 0);
+    const comEnc = base.filter(n => n.data_encerramento && n.data_investigacao);
+    const tEnc = comEnc.map(n => diasEntre(n.data_investigacao, n.data_encerramento)).filter(d => d !== null && d >= 0);
+    const med = arr => arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length) : 0;
+    destroyChart('exChartTempos');
+    charts.exChartTempos = new Chart($('exChartTempos').getContext('2d'), {
+      type:'bar',
+      data:{ labels:['Triagem','Investigação','Encerramento'], datasets:[{ data:[med(tTriagem), med(tInv), med(tEnc)], backgroundColor:['#2a6fa8','#b8860b','#1a7f4b'], borderRadius:6 }] },
+      options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y', plugins:{ legend:{display:false} }, scales:{ x:{ beginAtZero:true, ticks:{precision:0} }, y:{ grid:{display:false} } } }
+    });
+
+    // Workflow distribuição
+    const porWf = agrupar(base, n => WORKFLOW_LABELS[wfAtual(n)] || wfAtual(n));
+    destroyChart('exChartWorkflow');
+    charts.exChartWorkflow = new Chart($('exChartWorkflow').getContext('2d'), {
+      type:'doughnut',
+      data:{ labels:Object.keys(porWf), datasets:[{ data:Object.values(porWf), backgroundColor:['#8899a3','#2a6fa8','#b8860b','#b85516','#7c3aed','#1a7f4b'], borderWidth:2, borderColor:'#fff' }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{boxWidth:10,padding:6,font:{size:10}} } }, cutout:'60%' }
+    });
+
+    // Ações concluídas vs pendentes
+    const planosBase = todosActionPlans.filter(p => filtradas.some(n => n.id === p.incident_id));
+    const concl = planosBase.filter(p => p.status === 'Concluído').length;
+    const pend = planosBase.filter(p => p.status === 'Pendente' || p.status === 'Em andamento').length;
+    const atrasadas = planosBase.filter(p => p.status !== 'Concluído' && p.quando && new Date(p.quando) < new Date()).length;
+    destroyChart('exChartAcoes');
+    charts.exChartAcoes = new Chart($('exChartAcoes').getContext('2d'), {
+      type:'doughnut',
+      data:{ labels:['Concluídas','Em andamento','Atrasadas'], datasets:[{ data:[concl, pend-atrasadas >= 0 ? pend-atrasadas : pend, atrasadas], backgroundColor:['#1a7f4b','#b8860b','#c0392b'], borderWidth:2, borderColor:'#fff' }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{boxWidth:10,padding:6,font:{size:10}} } }, cutout:'60%' }
+    });
+  }
+
+  function renderAnalise(){
+    const base = filtradas;
+    const anoAtual = new Date().getFullYear().toString();
+    const anoAnt = (parseInt(anoAtual)-1).toString();
+    const dAtual = MESES.map(()=>0), dAnt = MESES.map(()=>0);
+    base.forEach(n => {
+      const a = anoDe(n.data_incidente); const m = mesDe(n.data_incidente); if(!m) return;
+      const i = MESES.indexOf(m);
+      if(a===anoAtual) dAtual[i]++; else if(a===anoAnt) dAnt[i]++;
+    });
+    destroyChart('chartTrend');
+    charts.chartTrend = new Chart($('chartTrend').getContext('2d'), {
+      type:'line', data:{ labels:MESES_CURTO, datasets:[
+        { label:anoAtual, data:dAtual, borderColor:'#0f6e8c', backgroundColor:'rgba(15,110,140,.10)', tension:.35, fill:true, borderWidth:2, pointRadius:4 },
+        { label:anoAnt, data:dAnt, borderColor:'#b8860b', backgroundColor:'rgba(184,134,11,.08)', tension:.35, fill:true, borderWidth:2, pointRadius:4 }
+      ]},
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'top', labels:{boxWidth:12,font:{size:11}} } }, scales:{ y:{ beginAtZero:true, ticks:{precision:0}, grid:{color:'#eef1f4'} }, x:{ grid:{display:false} } } }
+    });
+
+    const porTipo = agrupar(base, n => n.tipo_incidente);
+    const tip = Object.entries(porTipo).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    destroyChart('chartTipo');
+    charts.chartTipo = new Chart($('chartTipo').getContext('2d'), {
+      type:'bar', data:{ labels:tip.map(e=>e[0].length>28?e[0].slice(0,28)+'…':e[0]), datasets:[{ data:tip.map(e=>e[1]), backgroundColor:'#b8860b', borderRadius:6 }] },
+      options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y', plugins:{ legend:{display:false} }, scales:{ x:{ beginAtZero:true, ticks:{precision:0} }, y:{ grid:{display:false}, ticks:{font:{size:10}} } } }
+    });
+
+    const classes = ['Circunstância de Risco / Falhas de processo','Evento sem dano','Evento com dano leve','Evento com dano moderado','Evento com dano grave','Evento com óbito','Evento sentinela'];
+    const statuses = ['Em andamento','Em análise','Concluído','Arquivado','Cancelado'];
+    const datasets = statuses.map((st,i) => ({
+      label: st,
+      data: classes.map(c => base.filter(n => n.classificacao===c && (n.status||'Em andamento')===st).length),
+      backgroundColor: ['#2a6fa8','#b8860b','#1a7f4b','#526571','#c0392b'][i],
+      borderRadius: 4
+    }));
+    destroyChart('chartClassStatus');
+    charts.chartClassStatus = new Chart($('chartClassStatus').getContext('2d'), {
+      type:'bar', data:{ labels:classes.map(c=>c.length>20?c.slice(0,20)+'…':c), datasets },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{boxWidth:10,padding:6,font:{size:10}} } }, scales:{ x:{ stacked:true, grid:{display:false}, ticks:{font:{size:9}} }, y:{ stacked:true, beginAtZero:true, ticks:{precision:0} } } }
+    });
+
+    // Setor notificante × notificado
+    const top5Notif = Object.entries(agrupar(base, n => n.setor_notificante)).sort((a,b)=>b[1]-a[1]).slice(0,5).map(e=>e[0]);
+    const top5Not = Object.entries(agrupar(base, n => n.setor_notificado)).sort((a,b)=>b[1]-a[1]).slice(0,5).map(e=>e[0]);
+    const matrizDatasets = top5Not.map((sN, i) => ({
+      label: sN,
+      data: top5Notif.map(sNot => base.filter(n => n.setor_notificante===sNot && n.setor_notificado===sN).length),
+      backgroundColor: ['#0f6e8c','#2a8aa5','#b8860b','#b85516','#7c3aed'][i],
+      borderRadius: 4
+    }));
+    destroyChart('chartSetorCruz');
+    charts.chartSetorCruz = new Chart($('chartSetorCruz').getContext('2d'), {
+      type:'bar', data:{ labels:top5Notif, datasets:matrizDatasets },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{boxWidth:10,padding:6,font:{size:10}} } }, scales:{ x:{ stacked:true, grid:{display:false}, ticks:{font:{size:9}} }, y:{ stacked:true, beginAtZero:true, ticks:{precision:0} } } }
+    });
+  }
+
+  function agrupar(lista, fnKey){ const c = {}; lista.forEach(n => { const k = fnKey(n) || 'Não informado'; c[k] = (c[k]||0)+1; }); return c; }
+  function destroyChart(name){ if(charts[name]){ try{ charts[name].destroy(); }catch(e){} delete charts[name]; } }
+
+  // ===== Kanban =====
+  function renderKanban(){
+    const board = $('kanbanBoard');
+    board.innerHTML = '';
+    const wfs = WORKFLOW_OPTIONS;
+    wfs.forEach(wf => {
+      const itens = filtradas.filter(n => wfAtual(n) === wf);
+      const col = document.createElement('div');
+      col.className = 'kanban-col ' + wf.toLowerCase().replace(/ /g,'-').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      col.innerHTML =
+        '<div class="kanban-col-head">' +
+          '<div class="title">'+WORKFLOW_ICONS[wf]+' '+WORKFLOW_LABELS[wf]+'</div>' +
+          '<div class="count">'+itens.length+'</div>' +
+        '</div>' +
+        '<div class="kanban-cards" data-wf="'+wf+'"></div>';
+      board.appendChild(col);
+      const cards = col.querySelector('.kanban-cards');
+      itens.forEach(n => {
+        const card = document.createElement('div');
+        const pCls = isGrave(n.classificacao) ? 'priority-high' : (isObrigatoria(n.classificacao) ? 'priority-med' : '');
+        card.className = 'kanban-card ' + pCls;
+        card.innerHTML =
+          '<div class="kc-head"><div class="kc-num">'+escapeHtml(numeroNotificacao(n))+'</div><div class="kc-date">'+escapeHtml(fmtDate(n.data_incidente))+'</div></div>' +
+          '<div class="kc-title">'+escapeHtml(n.tipo_incidente || '—')+'</div>' +
+          '<div class="kc-foot"><div class="kc-setor">🏥 '+escapeHtml(n.setor_notificante || '—')+'</div><span class="badge '+classBadge(n.classificacao)+'">'+escapeHtml((n.classificacao||'').replace(/^Evento com /,'').replace(/^Evento /,''))+'</span></div>';
+        card.addEventListener('click', () => abrirModal(n));
+        cards.appendChild(card);
+      });
+    });
+  }
+
+  // ===== Tabela Planilha =====
+  function getPaginaDados(){
+    if(pageSize === 'all') return filtradas;
+    return filtradas.slice((currentPage-1)*pageSize, (currentPage-1)*pageSize + pageSize);
+  }
+  function renderTabelaPlanilha(){
+    const tbody = $('tablePlanilhaBody'), tfoot = $('tablePlanilhaFoot');
+    const empty = $('emptyState'), pag = $('pagination');
+    tbody.innerHTML = ''; tfoot.innerHTML = '';
+    if(!filtradas.length){ empty.hidden=false; pag.hidden=true; return; }
+    empty.hidden = true; pag.hidden = false;
+    const pageData = getPaginaDados();
+    pageData.forEach(n => {
+      const st = n.status || 'Em andamento';
+      const wf = wfAtual(n);
+      const tr = document.createElement('tr');
+      if(st === 'Cancelado') tr.className = 'cancelled';
+      const nomeNotif = n.anonima ? '🔒 Anônimo' : (n.notificante || '—');
+      tr.innerHTML =
+        '<td class="cell-muted">'+escapeHtml(mesDe(n.data_incidente||n.created_at)||'—')+'</td>' +
+        '<td class="cell-num">'+escapeHtml(numeroNotificacao(n))+'</td>' +
+        '<td class="cell-timestamp">'+escapeHtml(fmtDateTimeShort(n.created_at))+'</td>' +
+        '<td class="cell-date">'+escapeHtml(fmtDate(n.data_incidente))+'</td>' +
+        '<td><span class="wf-badge '+wfBadge(wf)+'">'+escapeHtml(WORKFLOW_LABELS[wf]||wf)+'</span></td>' +
+        '<td><div class="cell-truncate" title="'+escapeHtml(n.paciente||'')+'">'+escapeHtml(n.paciente||'—')+'</div></td>' +
+        '<td class="cell-muted">'+escapeHtml(n.prontuario||'—')+'</td>' +
+        '<td><div class="cell-truncate">'+escapeHtml(n.setor_notificante||'—')+(n.setor_notificante_outros?' <span style="color:var(--muted);font-size:10px">('+escapeHtml(n.setor_notificante_outros)+')</span>':'')+'</div></td>' +
+        '<td><div class="cell-truncate">'+escapeHtml(n.setor_notificado||'—')+(n.setor_notificado_outros?' <span style="color:var(--muted);font-size:10px">('+escapeHtml(n.setor_notificado_outros)+')</span>':'')+'</div></td>' +
+        '<td><span class="badge '+classBadge(n.classificacao)+'">'+escapeHtml(n.classificacao||'—')+'</span></td>' +
+        '<td><div class="cell-truncate med">'+escapeHtml(n.tipo_incidente||'—')+(n.tipo_incidente_outros?' <span style="color:var(--muted);font-size:10px">('+escapeHtml(n.tipo_incidente_outros)+')</span>':'')+'</div></td>' +
+        '<td><div class="cell-truncate long" title="'+escapeHtml(n.descricao||'')+'">'+escapeHtml(n.descricao||'—')+'</div></td>' +
+        '<td><div class="cell-truncate long" title="'+escapeHtml(n.acao_realizada||'')+'">'+escapeHtml(n.acao_realizada||'—')+'</div></td>' +
+        '<td><div class="cell-truncate" title="'+escapeHtml(n.notificante||'')+'">'+escapeHtml(nomeNotif)+'</div></td>' +
+        '<td><span class="status-badge '+statusBadge(st)+'">'+escapeHtml(st)+'</span></td>' +
+        '<td><div class="cell-truncate" title="'+escapeHtml(n.observacao||'')+'">'+escapeHtml(n.observacao||'—')+'</div></td>' +
+        '<td><button class="btn-ver" data-id="'+n.id+'">Ver</button></td>';
+      tbody.appendChild(tr);
+    });
+    tbody.querySelectorAll('.btn-ver').forEach(b => {
+      b.addEventListener('click', () => { const id = Number(b.dataset.id); const n = todasNotificacoes.find(x=>x.id===id); if(n) abrirModal(n); });
+    });
+    const total = filtradas.length;
+    const obrig = filtradas.filter(n => isObrigatoria(n.classificacao)).length;
+    const concl = filtradas.filter(n => n.status==='Concluído').length;
+    const graves = filtradas.filter(n => isGrave(n.classificacao)).length;
+    tfoot.innerHTML = '<tr class="tfoot-row"><td colspan="3">TOTAIS ('+total+')</td><td></td><td></td><td></td><td></td><td></td><td colspan="2">Obrigatórias: '+obrig+' • Graves: '+graves+'</td><td></td><td></td><td></td><td>Concluídas: '+concl+'</td><td></td><td></td></tr>';
+    atualizarPaginacao();
+  }
+
+  function atualizarPaginacao(){
+    const total = filtradas.length;
+    const totalPag = pageSize === 'all' ? 1 : Math.ceil(total/pageSize);
+    if(currentPage > totalPag) currentPage = totalPag;
+    if(currentPage < 1) currentPage = 1;
+    const start = pageSize==='all'?1:((currentPage-1)*pageSize+1);
+    const end = pageSize==='all'?total:Math.min(currentPage*pageSize, total);
+    $('paginationInfo').innerHTML = 'Mostrando <strong>'+start+'</strong>–<strong>'+end+'</strong> de <strong>'+total+'</strong>';
+    $('btnFirstPage').disabled = currentPage===1;
+    $('btnPrevPage').disabled = currentPage===1;
+    $('btnNextPage').disabled = currentPage>=totalPag;
+    $('btnLastPage').disabled = currentPage>=totalPag;
+    const nums = $('pageNumbers'); nums.innerHTML='';
+    const maxB = 5;
+    let sp = Math.max(1, currentPage-2);
+    let ep = Math.min(totalPag, sp+maxB-1);
+    if(ep-sp+1 < maxB) sp = Math.max(1, ep-maxB+1);
+    for(let i=sp; i<=ep; i++){
+      const b = document.createElement('button');
+      b.className = 'page-btn' + (i===currentPage?' active':'');
+      b.textContent = i;
+      b.addEventListener('click', () => { currentPage = i; renderTabelaPlanilha(); });
+      nums.appendChild(b);
+    }
+  }
+
+  // ===== Modal =====
+  async function abrirModal(n){
+    $('modalTitle').textContent = 'Notificação ' + numeroNotificacao(n);
+    modalSubtitle.textContent = 'Recebida em ' + fmtDateTime(n.created_at);
+    const wf = wfAtual(n);
+    const rca = todasRca.find(r => r.incident_id === n.id) || null;
+    const planos = todosActionPlans.filter(p => p.incident_id === n.id).sort((a,b) => a.id - b.id);
+    const st = n.status || 'Em andamento';
+    const nomeNotif = n.anonima ? '🔒 Anônimo' : (n.notificante || '—');
+
+    // Timeline
+    const steps = WORKFLOW_OPTIONS;
+    const idxAtual = steps.indexOf(wf);
+    const datas = { 'Notificada': n.created_at, 'Triagem': n.data_triagem, 'Investigação': n.data_investigacao, 'Encerrada': n.data_encerramento };
+    const timelineHtml = '<div class="timeline">' + steps.map((s, i) => {
+      const cls = i < idxAtual ? 'done' : (i === idxAtual ? 'current' : '');
+      const dt = datas[s] ? fmtDate(String(datas[s]).slice(0,10)) : '';
+      return '<div class="timeline-step '+cls+'"><div class="timeline-dot">'+(i<idxAtual?'✓':(i+1))+'</div><div class="tl-label">'+WORKFLOW_LABELS[s]+'</div><div class="tl-date">'+dt+'</div></div>';
+    }).join('') + '</div>';
+
+    modalBody.innerHTML = `
+      <div class="detail-section">
+        <h3>🔄 Workflow do Caso</h3>
+        ${timelineHtml}
+        <div class="modal-edit">
+          <div class="row">
+            <div>
+              <label for="editWf">Etapa atual</label>
+              <select id="editWf">${WORKFLOW_OPTIONS.map(s => '<option value="'+s+'"'+(s===wf?' selected':'')+'>'+WORKFLOW_LABELS[s]+'</option>').join('')}</select>
+            </div>
+            <div>
+              <label for="editResp">Responsável NSP</label>
+              <input type="text" id="editResp" placeholder="Nome do responsável" value="${escapeHtml(n.responsavel_nsp || '')}">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h3>🎯 Classificação e Dados</h3>
+        <div class="detail-grid">
+          <div class="detail-item full"><div class="label">Classificação</div><div class="value"><span class="badge ${classBadge(n.classificacao)}">${escapeHtml(n.classificacao||'—')}</span></div></div>
+          <div class="detail-item"><div class="label">Tipo</div><div class="value">${escapeHtml(n.tipo_incidente||'—')}${n.tipo_incidente_outros?' ('+escapeHtml(n.tipo_incidente_outros)+')':''}</div></div>
+          <div class="detail-item"><div class="label">Data do incidente</div><div class="value">${escapeHtml(fmtDate(n.data_incidente))}</div></div>
+          <div class="detail-item"><div class="label">Setor notificante</div><div class="value">${escapeHtml(n.setor_notificante||'—')}${n.setor_notificante_outros?' ('+escapeHtml(n.setor_notificante_outros)+')':''}</div></div>
+          <div class="detail-item"><div class="label">Setor notificado</div><div class="value">${escapeHtml(n.setor_notificado||'—')}${n.setor_notificado_outros?' ('+escapeHtml(n.setor_notificado_outros)+')':''}</div></div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h3>📝 Descrição</h3>
+        <div class="detail-item full"><div class="value desc">${escapeHtml(n.descricao||'—')}</div></div>
+      </div>
+
+      <div class="detail-section">
+        <h3>✅ Ação inicial</h3>
+        <div class="detail-item full"><div class="value">${escapeHtml(n.acao_realizada||'—')}</div></div>
+      </div>
+
+      <div class="detail-section">
+        <h3>👤 Dados identificáveis</h3>
+        <div class="detail-grid">
+          <div class="detail-item"><div class="label">Paciente</div><div class="value">${escapeHtml(n.paciente||'—')}</div></div>
+          <div class="detail-item"><div class="label">Prontuário</div><div class="value">${escapeHtml(n.prontuario||'—')}</div></div>
+          <div class="detail-item full"><div class="label">Notificante ${n.anonima?'<span style="color:var(--warning);font-size:11px">•  anônima</span>':''}</div><div class="value">${escapeHtml(nomeNotif)}</div></div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h3>📝 Plano de Ação (5W2H)</h3>
+        <div class="subsection">
+          <div class="subsection-title"><span class="accent"></span><span>Ações de tratamento</span></div>
+          <div class="plan-list" id="planList"></div>
+          <div style="margin-top:12px">
+            <button class="btn btn-primary-2" type="button" id="btnAddPlan">+ Adicionar ação</button>
+          </div>
+        </div>
+      </div>
+
+      ${isGrave(n.classificacao) || isObrigatoria(n.classificacao) ? `
+      <div class="detail-section">
+        <h3>🔬 Análise de Causa Raiz</h3>
+        <div class="subsection">
+          <div class="subsection-title"><span class="accent"></span><span>Ishikawa (6M)</span></div>
+          <div class="ishikawa-grid">
+            <div class="ishikawa-field"><label>Método</label><textarea id="rca_metodo">${escapeHtml(rca?.metodo||'')}</textarea></div>
+            <div class="ishikawa-field"><label>Mão de Obra</label><textarea id="rca_mao">${escapeHtml(rca?.mao_de_obra||'')}</textarea></div>
+            <div class="ishikawa-field"><label>Máquina</label><textarea id="rca_maquina">${escapeHtml(rca?.maquina||'')}</textarea></div>
+            <div class="ishikawa-field"><label>Material</label><textarea id="rca_material">${escapeHtml(rca?.material||'')}</textarea></div>
+            <div class="ishikawa-field"><label>Medida</label><textarea id="rca_medida">${escapeHtml(rca?.medida||'')}</textarea></div>
+            <div class="ishikawa-field"><label>Meio Ambiente</label><textarea id="rca_meio">${escapeHtml(rca?.meio_ambiente||'')}</textarea></div>
+          </div>
+          <div class="subsection-title" style="margin-top:16px"><span class="accent"></span><span>5 Porquês</span></div>
+          <div class="five-why-list">
+            ${[1,2,3,4,5].map(i => '<div class="why-item"><div class="why-num">'+i+'</div><textarea id="rca_p'+i+'" placeholder="Por que?">'+escapeHtml(rca?rca['porque_'+i]||'':'')+'</textarea></div>').join('')}
+          </div>
+          <div class="causa-raiz-box">
+            <label>⚠️ Causa raiz identificada</label>
+            <textarea id="rca_causa">${escapeHtml(rca?.causa_raiz||'')}</textarea>
+          </div>
+          <div style="margin-top:12px;text-align:right">
+            <button class="btn btn-primary-2" type="button" id="btnSaveRca">💾 Salvar RCA</button>
+          </div>
+        </div>
+      </div>` : ''}
+
+      <div class="detail-section">
+        <h3 class="purple-title">💡 Lições Aprendidas</h3>
+        <div class="lesson-box">
+          <label>Texto para biblioteca</label>
+          <textarea id="editLicoes" placeholder="Descreva o caso de forma educativa: o que aconteceu, o que aprendemos, o que recomendar...">${escapeHtml(n.licoes_aprendidas || '')}</textarea>
+          <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--text)">
+            <input type="checkbox" id="editPublicavel" ${n.publicavel?'checked':''} style="width:16px;height:16px;accent-color:var(--purple)">
+            Publicar na biblioteca de lições aprendidas
+          </label>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h3>✏️ Gerenciamento</h3>
+        <div class="modal-edit">
+          <div class="row">
+            <div>
+              <label for="editStatus">Status geral</label>
+              <select id="editStatus">${STATUS_OPTIONS.map(s => '<option value="'+s+'"'+(s===st?' selected':'')+'>'+s+'</option>').join('')}</select>
+            </div>
+            <div></div>
+          </div>
+          <div class="row" style="grid-template-columns:1fr">
+            <div><label for="editObs">Observação interna</label><textarea id="editObs" placeholder="Anotações...">${escapeHtml(n.observacao||'')}</textarea></div>
+          </div>
+          <div class="actions">
+            <span class="saved-msg" id="savedMsg">✓ Salvo</span>
+            <button class="btn btn-outline" id="btnCancelEdit" type="button">Fechar</button>
+            <button class="btn btn-success" id="btnSaveEdit" type="button" data-id="${n.id}">Salvar tudo</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h3 class="danger-title">⚠️ Zona de risco</h3>
+        <div class="danger-zone">
+          <div class="dz-title">🗑️ Ações destrutivas</div>
+          <div class="dz-text">Prefira <strong>cancelar</strong> — mantém o histórico. <strong>Excluir</strong> só para testes, erros ou duplicatas.</div>
+          <div class="dz-actions">
+            <button class="btn-cancel-soft" id="btnCancelNotif" type="button" data-id="${n.id}">🚫 Cancelar notificação</button>
+            <button class="btn-delete-hard" id="btnDeleteNotif" type="button" data-id="${n.id}">🗑️ Excluir permanentemente</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Plano de ação
+    renderPlanos(planos);
+    $('btnAddPlan').addEventListener('click', () => adicionarPlano(n.id));
+
+    // RCA
+    if($('btnSaveRca')) $('btnSaveRca').addEventListener('click', () => salvarRca(n.id, rca));
+
+    // Gerenciamento
+    $('btnSaveEdit').addEventListener('click', () => salvarEdicao(n.id));
+    $('btnCancelEdit').addEventListener('click', fecharModal);
+    $('btnCancelNotif').addEventListener('click', () => marcarComoCancelada(n));
+    $('btnDeleteNotif').addEventListener('click', () => abrirConfirmacaoExclusao(n));
+
+    modalBackdrop.hidden = false;
+    document.body.style.overflow = 'hidden';
+  }
+
+  function renderPlanos(planos){
+    const list = $('planList');
+    if(!list) return;
+    if(!planos.length){
+      list.innerHTML = '<div style="font-size:12.5px;color:var(--muted);padding:8px 0">Nenhuma ação cadastrada ainda. Clique em "Adicionar ação" para começar o tratamento.</div>';
+      return;
+    }
+    list.innerHTML = planos.map(p => `
+      <div class="plan-card ${p.status==='Concluído'?'done':''}" data-plan-id="${p.id}">
+        <div class="plan-card-head">
+          <div class="plan-title">${escapeHtml(p.o_que || 'Ação sem título')}</div>
+          <select class="plan-status-sel" data-id="${p.id}" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:11px;font-weight:600;background:#fff">
+            <option ${p.status==='Pendente'?'selected':''}>Pendente</option>
+            <option ${p.status==='Em andamento'?'selected':''}>Em andamento</option>
+            <option ${p.status==='Concluído'?'selected':''}>Concluído</option>
+            <option ${p.status==='Cancelado'?'selected':''}>Cancelado</option>
+          </select>
+        </div>
+        <div class="plan-grid">
+          <div class="plan-field full"><label>O quê (What)</label><input type="text" data-field="o_que" value="${escapeHtml(p.o_que||'')}"></div>
+          <div class="plan-field full"><label>Por quê (Why)</label><input type="text" data-field="por_que" value="${escapeHtml(p.por_que||'')}"></div>
+          <div class="plan-field"><label>Quem (Who)</label><input type="text" data-field="quem" value="${escapeHtml(p.quem||'')}"></div>
+          <div class="plan-field"><label>Quando (When)</label><input type="date" data-field="quando" value="${p.quando||''}"></div>
+          <div class="plan-field"><label>Onde (Where)</label><input type="text" data-field="onde" value="${escapeHtml(p.onde||'')}"></div>
+          <div class="plan-field"><label>Quanto (How much)</label><input type="text" data-field="quanto" value="${escapeHtml(p.quanto||'')}"></div>
+          <div class="plan-field full"><label>Como (How)</label><textarea data-field="como" style="min-height:50px">${escapeHtml(p.como||'')}</textarea></div>
+        </div>
+        <div class="plan-card-actions">
+          <button class="btn btn-outline btn-sm btn-remove-plan" data-id="${p.id}">🗑️ Remover</button>
+          <button class="btn btn-success btn-sm btn-save-plan" data-id="${p.id}">💾 Salvar</button>
+        </div>
+      </div>
+    `).join('');
+
+    list.querySelectorAll('.btn-save-plan').forEach(b => b.addEventListener('click', () => salvarPlano(Number(b.dataset.id))));
+    list.querySelectorAll('.btn-remove-plan').forEach(b => b.addEventListener('click', () => removerPlano(Number(b.dataset.id))));
+    list.querySelectorAll('.plan-status-sel').forEach(s => s.addEventListener('change', async () => {
+      const id = Number(s.dataset.id);
+      const upd = { status: s.value };
+      if(s.value === 'Concluído') upd.concluido_em = new Date().toISOString();
+      else upd.concluido_em = null;
+      const { error } = await supabase.from('action_plans').update(upd).eq('id', id);
+      if(error){ alert('Erro: '+error.message); return; }
+      const idx = todosActionPlans.findIndex(p => p.id === id);
+      if(idx>=0){ todosActionPlans[idx].status = s.value; todosActionPlans[idx].concluido_em = upd.concluido_em; }
+      renderExecutivo();
+    }));
+  }
+
+  async function adicionarPlano(incidentId){
+    const { data, error } = await supabase.from('action_plans').insert([{
+      incident_id: incidentId, o_que: 'Nova ação', status: 'Pendente'
+    }]).select().single();
+    if(error){ alert('Erro: '+error.message); return; }
+    todosActionPlans.push(data);
+    const n = todasNotificacoes.find(x => x.id === incidentId);
+    if(n) abrirModal(n);
+  }
+
+  async function salvarPlano(planId){
+    const card = document.querySelector('[data-plan-id="'+planId+'"]');
+    if(!card) return;
+    const upd = {};
+    card.querySelectorAll('[data-field]').forEach(el => { upd[el.dataset.field] = el.value.trim() || null; });
+    const st = card.querySelector('.plan-status-sel').value;
+    upd.status = st;
+    if(st === 'Concluído') upd.concluido_em = new Date().toISOString();
+    const { error } = await supabase.from('action_plans').update(upd).eq('id', planId);
+    if(error){ alert('Erro: '+error.message); return; }
+    const idx = todosActionPlans.findIndex(p => p.id === planId);
+    if(idx >= 0) Object.assign(todosActionPlans[idx], upd);
+    const msg = $('savedMsg'); if(msg){ msg.classList.add('show'); setTimeout(()=>msg.classList.remove('show'), 2000); }
+    renderExecutivo();
+  }
+
+  async function removerPlano(planId){
+    if(!confirm('Remover esta ação?')) return;
+    const { error } = await supabase.from('action_plans').delete().eq('id', planId);
+    if(error){ alert('Erro: '+error.message); return; }
+    todosActionPlans = todosActionPlans.filter(p => p.id !== planId);
+    const el = document.querySelector('[data-plan-id="'+planId+'"]');
+    if(el) el.remove();
+    renderExecutivo();
+  }
+
+  async function salvarRca(incidentId, rcaExistente){
+    const dados = {
+      incident_id: incidentId,
+      metodo: $('rca_metodo').value.trim() || null,
+      mao_de_obra: $('rca_mao').value.trim() || null,
+      maquina: $('rca_maquina').value.trim() || null,
+      material: $('rca_material').value.trim() || null,
+      medida: $('rca_medida').value.trim() || null,
+      meio_ambiente: $('rca_meio').value.trim() || null,
+      porque_1: $('rca_p1').value.trim() || null,
+      porque_2: $('rca_p2').value.trim() || null,
+      porque_3: $('rca_p3').value.trim() || null,
+      porque_4: $('rca_p4').value.trim() || null,
+      porque_5: $('rca_p5').value.trim() || null,
+      causa_raiz: $('rca_causa').value.trim() || null,
+      updated_at: new Date().toISOString()
+    };
+    let error;
+    if(rcaExistente){
+      const res = await supabase.from('rca_analyses').update(dados).eq('id', rcaExistente.id);
+      error = res.error;
+      if(!error){ const i = todasRca.findIndex(r => r.id === rcaExistente.id); if(i>=0) Object.assign(todasRca[i], dados); }
+    } else {
+      const res = await supabase.from('rca_analyses').insert([dados]).select().single();
+      error = res.error;
+      if(!error) todasRca.push(res.data);
+    }
+    if(error){ alert('Erro: '+error.message); return; }
+    const msg = $('savedMsg'); if(msg){ msg.textContent = '✓ RCA salva'; msg.classList.add('show'); setTimeout(()=>{ msg.classList.remove('show'); msg.textContent = '✓ Salvo'; }, 2000); }
+  }
+
+  async function salvarEdicao(id){
+    const btn = $('btnSaveEdit');
+    btn.disabled = true; btn.textContent = 'Salvando...';
+    const upd = {
+      status: $('editStatus').value,
+      observacao: $('editObs').value.trim() || null,
+      workflow_status: $('editWf').value,
+      responsavel_nsp: $('editResp').value.trim() || null,
+      licoes_aprendidas: $('editLicoes').value.trim() || null,
+      publicavel: $('editPublicavel').checked
+    };
+    // Datas do workflow
+    if(upd.workflow_status === 'Triagem' && !$('editWf').dataset.old) upd.data_triagem = new Date().toISOString();
+    if(upd.workflow_status === 'Investigação') upd.data_investigacao = new Date().toISOString();
+    if(upd.workflow_status === 'Encerrada') upd.data_encerramento = new Date().toISOString();
+
+    const { error } = await supabase.from('incidents').update(upd).eq('id', id);
+    btn.disabled = false; btn.textContent = 'Salvar tudo';
+    if(error){ alert('Erro: '+error.message); return; }
+    const idx = todasNotificacoes.findIndex(x => x.id === id);
+    if(idx >= 0) Object.assign(todasNotificacoes[idx], upd);
+    const msg = $('savedMsg');
+    msg.classList.add('show'); setTimeout(()=>msg.classList.remove('show'), 2500);
+    aplicarFiltros();
+    registrarLog('update_completo_' + id);
+  }
+
+  async function marcarComoCancelada(n){
+    if(!confirm('Marcar '+numeroNotificacao(n)+' como CANCELADA?\n\nO registro será mantido no banco.')) return;
+    const btn = $('btnCancelNotif'); if(btn){ btn.disabled = true; btn.textContent = 'Cancelando...'; }
+    const { error } = await supabase.from('incidents').update({ status: 'Cancelado' }).eq('id', n.id);
+    if(btn){ btn.disabled = false; btn.innerHTML = '🚫 Cancelar notificação'; }
+    if(error){ alert('Erro: '+error.message); return; }
+    const idx = todasNotificacoes.findIndex(x => x.id === n.id);
+    if(idx >= 0) todasNotificacoes[idx].status = 'Cancelado';
+    const msg = $('savedMsg'); if(msg){ msg.classList.add('show'); setTimeout(()=>msg.classList.remove('show'), 2500); }
+    aplicarFiltros();
+    registrarLog('cancel_' + numeroNotificacao(n));
+  }
+
+  function abrirConfirmacaoExclusao(n){
+    notifParaExcluir = n;
+    $('confirmNum').textContent = numeroNotificacao(n);
+    confirmInput.value = ''; btnConfirmDelete.disabled = true;
+    confirmBackdrop.hidden = false;
+    setTimeout(() => confirmInput.focus(), 100);
+  }
+  function fecharConfirmacao(){ confirmBackdrop.hidden = true; notifParaExcluir = null; confirmInput.value = ''; btnConfirmDelete.disabled = true; }
+  confirmInput.addEventListener('input', () => { btnConfirmDelete.disabled = confirmInput.value.trim().toUpperCase() !== 'EXCLUIR'; });
+  $('btnCancelConfirm').addEventListener('click', fecharConfirmacao);
+  confirmBackdrop.addEventListener('click', e => { if(e.target === confirmBackdrop) fecharConfirmacao(); });
+  btnConfirmDelete.addEventListener('click', async () => {
+    if(!notifParaExcluir) return;
+    const n = notifParaExcluir; const num = numeroNotificacao(n);
+    btnConfirmDelete.disabled = true; btnConfirmDelete.textContent = 'Excluindo...';
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from('admin_access_log').insert([{ user_email: user?user.email:null, action: 'delete_permanente', user_agent: navigator.userAgent + ' | excluiu '+num+' (id='+n.id+') | paciente: '+(n.paciente||'—') }]);
+    } catch(e){}
+    const { error } = await supabase.from('incidents').delete().eq('id', n.id);
+    btnConfirmDelete.disabled = false; btnConfirmDelete.innerHTML = '🗑️ Excluir permanentemente';
+    if(error){ alert('Erro: '+error.message); return; }
+    todasNotificacoes = todasNotificacoes.filter(x => x.id !== n.id);
+    todosActionPlans = todosActionPlans.filter(p => p.incident_id !== n.id);
+    todasRca = todasRca.filter(r => r.incident_id !== n.id);
+    fecharConfirmacao(); fecharModal(); aplicarFiltros();
+  });
+
+  function fecharModal(){ modalBackdrop.hidden = true; document.body.style.overflow = ''; }
+  $('modalClose').addEventListener('click', fecharModal);
+  modalBackdrop.addEventListener('click', e => { if(e.target === modalBackdrop) fecharModal(); });
+  document.addEventListener('keydown', e => { if(e.key === 'Escape'){ if(!confirmBackdrop.hidden) fecharConfirmacao(); else if(!modalBackdrop.hidden) fecharModal(); } });
+
+  // ===== Lições Aprendidas =====
+  function renderLicoes(){
+    const list = $('lessonsList');
+    const publicaveis = filtradas.filter(n => n.publicavel && n.licoes_aprendidas);
+    if(!publicaveis.length){
+      list.innerHTML = '<div class="empty-state"><div class="icon">💡</div><h3>Nenhuma lição publicada ainda</h3><p>Marque "Publicar na biblioteca" em notificações encerradas para que apareçam aqui.</p></div>';
+      return;
+    }
+    list.innerHTML = publicaveis.map(n => `
+      <div class="lesson-card">
+        <div class="lc-head">
+          <div class="lc-title">${escapeHtml(n.tipo_incidente || 'Caso')} — ${escapeHtml(numeroNotificacao(n))}</div>
+          <span class="badge ${classBadge(n.classificacao)}">${escapeHtml(n.classificacao||'—')}</span>
+        </div>
+        <div class="lc-meta">
+          <span>📅 ${escapeHtml(fmtDate(n.data_incidente))}</span>
+          <span>🏥 ${escapeHtml(n.setor_notificante || '—')}</span>
+        </div>
+        <div class="lc-desc">${escapeHtml(n.descricao || '')}</div>
+        <div class="lc-body">${escapeHtml(n.licoes_aprendidas)}</div>
+      </div>
+    `).join('');
+  }
+
+  // ===== Export Excel =====
+  function exportarExcel(){
+    if(!filtradas.length){ alert('Não há notificações para exportar.'); return; }
+    const XLSX = window.XLSX;
+    const porMes = {}; MESES.forEach(m => porMes[m] = []);
+    const semMes = [];
+    filtradas.forEach(n => { const m = mesDe(n.data_incidente||n.created_at); if(m && porMes[m]) porMes[m].push(n); else semMes.push(n); });
+    const COR_HEADER_BG='0F6E8C', COR_HEADER_TXT='FFFFFF', COR_SUBHEADER_BG='E6F3F7', COR_TABELA_BG='D0E5EC', COR_BORDA='B7C7D1', COR_TXT='1A2B33', COR_PRIMARY='0F6E8C';
+    const headers = ['Mês de Referência','Nº NOTIFICAÇÃO','Timestamp','Data do Incidente','Identificação do Paciente\nQuando não envolver paciente, colocar (...)','Atendimento / Prontuário\nQuando não envolver paciente colocar (...)','SETOR NOTIFICANTE','SETOR NOTIFICADO','Classificação da Ocorrência','Tipo de Incidente','Descrição da Ocorrência','O que foi feito após identificação da ocorrência?','Identificação do notificante','Status','Workflow','Observação'];
+    const larguras = [14,15,18,13,26,16,20,20,28,28,40,30,22,15,15,28];
+    const border = { top:{style:'thin',color:{rgb:COR_BORDA}}, bottom:{style:'thin',color:{rgb:COR_BORDA}}, left:{style:'thin',color:{rgb:COR_BORDA}}, right:{style:'thin',color:{rgb:COR_BORDA}} };
+    const sT = { font:{name:'Calibri',sz:14,bold:true,color:{rgb:COR_HEADER_TXT}}, fill:{patternType:'solid',fgColor:{rgb:COR_HEADER_BG}}, alignment:{horizontal:'center',vertical:'center',wrapText:true}, border };
+    const sS = { font:{name:'Calibri',sz:11,bold:true,color:{rgb:COR_TXT}}, fill:{patternType:'solid',fgColor:{rgb:COR_SUBHEADER_BG}}, alignment:{horizontal:'left',vertical:'center',wrapText:true,indent:1}, border };
+    const sSV = { font:{name:'Calibri',sz:11,color:{rgb:COR_TXT}}, fill:{patternType:'solid',fgColor:{rgb:COR_SUBHEADER_BG}}, alignment:{horizontal:'left',vertical:'center',wrapText:true,indent:1}, border };
+    const sH = { font:{name:'Calibri',sz:10,bold:true,color:{rgb:COR_TXT}}, fill:{patternType:'solid',fgColor:{rgb:COR_TABELA_BG}}, alignment:{horizontal:'center',vertical:'center',wrapText:true}, border };
+    const sC = { font:{name:'Calibri',sz:10,color:{rgb:COR_TXT}}, alignment:{horizontal:'left',vertical:'top',wrapText:true}, border };
+    const sCC = { font:{name:'Calibri',sz:10,color:{rgb:COR_TXT}}, alignment:{horizontal:'center',vertical:'top',wrapText:true}, border };
+    const sM = { font:{name:'Calibri',sz:10,bold:true,color:{rgb:COR_PRIMARY}}, alignment:{horizontal:'center',vertical:'top',wrapText:true}, border };
+    const sN = { font:{name:'Calibri',sz:10,bold:true,color:{rgb:COR_PRIMARY}}, alignment:{horizontal:'center',vertical:'top',wrapText:true}, border };
+
+    function ab(mesNome, dados){
+      const aoa = [];
+      aoa.push(['Registros de Não Conformidades e Incidentes de Segurança do Paciente - 2025']); for(let i=1;i<16;i++) aoa[0].push('');
+      aoa.push(['Empresa: Sugisawa Diagnósticos Por Imagem','','','','','','','Ano: 2025','','','','','','','','']);
+      aoa.push(['Responsáveis:','','','','','','','Responsável pelos dados: Ronielson Pereira Barbosa','','','','','','','','']);
+      aoa.push(new Array(16).fill(''));
+      aoa.push(headers.slice());
+      dados.forEach(n => {
+        aoa.push([mesNome, numeroNotificacao(n), fmtDateTime(n.created_at), fmtDate(n.data_incidente), n.paciente||'', n.prontuario||'', (n.setor_notificante||'')+(n.setor_notificante_outros?' ('+n.setor_notificante_outros+')':''), (n.setor_notificado||'')+(n.setor_notificado_outros?' ('+n.setor_notificado_outros+')':''), n.classificacao||'', (n.tipo_incidente||'')+(n.tipo_incidente_outros?' ('+n.tipo_incidente_outros+')':''), n.descricao||'', n.acao_realizada||'', n.anonima ? '🔒 Anônimo' : (n.notificante||''), n.status||'Em andamento', WORKFLOW_LABELS[wfAtual(n)]||wfAtual(n), n.observacao||'']);
+      });
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!merges'] = [{s:{r:0,c:0},e:{r:0,c:15}},{s:{r:1,c:0},e:{r:1,c:6}},{s:{r:1,c:7},e:{r:1,c:11}},{s:{r:2,c:0},e:{r:2,c:6}},{s:{r:2,c:7},e:{r:2,c:15}}];
+      ws['!cols'] = larguras.map(w => ({ wch: w }));
+      ws['!rows'] = [{hpt:32},{hpt:22},{hpt:22},{hpt:8},{hpt:46}];
+      for(let i=0;i<dados.length;i++) ws['!rows'].push({hpt:40});
+      const range = XLSX.utils.decode_range(ws['!ref']);
+      for(let R=range.s.r;R<=range.e.r;R++) for(let C=range.s.c;C<=range.e.c;C++){
+        const addr = XLSX.utils.encode_cell({r:R,c:C});
+        if(!ws[addr]) ws[addr] = {t:'s',v:''};
+        if(R===0) ws[addr].s = sT;
+        else if(R===1) ws[addr].s = C<=7 ? sS : sSV;
+        else if(R===2) ws[addr].s = C<=7 ? sS : sSV;
+        else if(R===3) ws[addr].s = { fill:{patternType:'solid',fgColor:{rgb:'FFFFFF'}} };
+        else if(R===4) ws[addr].s = sH;
+        else { if(C===0) ws[addr].s = sM; else if(C===1) ws[addr].s = sN; else if(C===2||C===3||C===13||C===14) ws[addr].s = sCC; else ws[addr].s = sC; }
+      }
+      ws['!autofilter'] = { ref: XLSX.utils.encode_range({s:{r:4,c:0},e:{r:4+dados.length,c:15}}) };
+      return ws;
+    }
+    const wb = XLSX.utils.book_new();
+    wb.Props = { Title:'Registros de Não Conformidades 2025', Author:'Sugisawa Diagnósticos' };
+    MESES.forEach(mes => { XLSX.utils.book_append_sheet(wb, ab(mes, porMes[mes]||[]), mes.toUpperCase().slice(0,31)); });
+    if(semMes.length) XLSX.utils.book_append_sheet(wb, ab('Sem mês', semMes), 'SEM MÊS');
+    XLSX.writeFile(wb, 'Notificacoes_Incidentes_'+new Date().toISOString().slice(0,10)+'.xlsx');
+    registrarLog('export_excel');
+  }
+
+  // ===== Tabs / Ordenação / Paginação / Eventos =====
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.hidden = true);
+      btn.classList.add('active');
+      $('tab-' + tab).hidden = false;
+      if(['executivo','visao','analise'].includes(tab)) setTimeout(() => aplicarFiltros(), 30);
+    });
+  });
+
+  document.querySelectorAll('th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.key;
+      if(sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      else { sortKey = key; sortDir = 'asc'; }
+      document.querySelectorAll('th.sortable').forEach(t => t.classList.remove('sorted'));
+      th.classList.add('sorted');
+      const icon = th.querySelector('.sort-icon');
+      if(icon) icon.textContent = sortDir === 'asc' ? '▲' : '▼';
+      aplicarOrdenacao(); renderTabelaPlanilha();
+    });
+  });
+
+  $('pageSize').addEventListener('change', e => { pageSize = e.target.value === 'all' ? 'all' : parseInt(e.target.value,10); currentPage = 1; renderTabelaPlanilha(); });
+  $('btnFirstPage').addEventListener('click', () => { currentPage = 1; renderTabelaPlanilha(); });
+  $('btnPrevPage').addEventListener('click', () => { currentPage = Math.max(1, currentPage-1); renderTabelaPlanilha(); });
+  $('btnNextPage').addEventListener('click', () => { currentPage++; renderTabelaPlanilha(); });
+  $('btnLastPage').addEventListener('click', () => { currentPage = pageSize==='all'?1:Math.ceil(filtradas.length/pageSize); renderTabelaPlanilha(); });
+
+  const filterIds = ['fBusca','fAno','fMes','fClass','fStatus','fWorkflow','fDataIni','fDataFim','fSetor','fTipo'];
+  let dbTimer;
+  filterIds.forEach(id => {
+    const el = $(id);
+    if(id === 'fBusca'){
+      el.addEventListener('input', () => { clearTimeout(dbTimer); dbTimer = setTimeout(() => { currentPage = 1; aplicarFiltros(); }, 250); });
+    } else {
+      el.addEventListener('input', () => { currentPage = 1; aplicarFiltros(); });
+      el.addEventListener('change', () => { currentPage = 1; aplicarFiltros(); });
+    }
+  });
+
+  $('btnLimpar').addEventListener('click', () => { filterIds.forEach(id => $(id).value = ''); currentPage = 1; aplicarFiltros(); });
+  $('btnExport').addEventListener('click', exportarExcel);
+
+  init();
+})();
+</script>
+</body>
+</html>
